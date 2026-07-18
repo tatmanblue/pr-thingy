@@ -33,12 +33,11 @@ timestamp), not on every sync.
 ## Prerequisites
 
 - .NET 10 SDK
-- [GitHub CLI](https://cli.github.com/) (`gh`), authenticated (`gh auth login`) with access to the
-  repos you want to watch
-- [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) (`claude`) and/or the
-  [Gemini CLI](https://github.com/google-gemini/gemini-cli) (`gemini`) — whichever agent you
-  select in Settings. The Gemini CLI requires Node.js 20+.
+- GitHub CLI (`gh`) and an agent CLI (`claude` and/or `gemini`), both installed and authenticated
 - Local git clones of the repositories you want to monitor
+
+See [`docs/setup-and-troubleshooting.md`](docs/setup-and-troubleshooting.md) for full setup steps,
+what the app shows when something's wrong, and how to fix common problems.
 
 ## Getting started
 
@@ -63,6 +62,7 @@ Directory.Packages.props         # central NuGet package versions
 docs/
   design.md                      # target shape: cross-platform GUI app
   plan1.md                       # original automation idea pr-thingy's background sync mirrors
+  setup-and-troubleshooting.md   # what to install/authenticate, and how to diagnose failures
 src/
   PrThingy.Core/                   # domain models, interfaces, orchestration — no I/O
   PrThingy.Infrastructure/         # gh/claude/gemini CLI shelling, file-based storage, background sync
