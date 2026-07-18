@@ -1,0 +1,147 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PrThingy.App.ViewModels"
+        xmlns:models="using:PrThingy.Core.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
+        x:Class="PrThingy.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="PR Thingy - automatic github pull request monitoring">
+
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Padding="12" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SystemBaseLowColor}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Sync Now"
+                        Command="{Binding Dashboard.SyncNowCommand}"
+                        IsEnabled="{Binding !Dashboard.IsSyncing}" />
+                <Button Content="Settings" Click="OnSettingsClick" />
+                <CheckBox Content="Unread only" IsChecked="{Binding Dashboard.ShowUnreadOnly}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Dashboard.SyncStatusMessage, FallbackValue=Syncing…}"
+                           IsVisible="{Binding Dashboard.IsSyncing}"
+                           VerticalAlignment="Center" Opacity="0.7" TextTrimming="CharacterEllipsis" MaxWidth="500" />
+            </StackPanel>
+        </Border>
+
+        <TabControl>
+        <TabItem Header="Reviews">
+        <Grid ColumnDefinitions="360,*">
+            <ListBox Grid.Column="0"
+                     ItemsSource="{Binding Dashboard.Briefings}"
+                     SelectedItem="{Binding Dashboard.SelectedBriefing}"
+                     Margin="0,0,1,0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BriefingCardViewModel">
+                        <StackPanel Margin="4" Spacing="3">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Width="8" Height="8" Fill="DodgerBlue" IsVisible="{Binding !IsRead}" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Border Background="#3355AAFF" CornerRadius="4" Padding="6,1">
+                                    <TextBlock Text="{Binding RepositoryDisplayName}" FontSize="11" FontWeight="Medium" />
+                                </Border>
+                                <TextBlock Opacity="0.7" FontSize="11" VerticalAlignment="Center">
+                                    <Run Text="#" /><Run Text="{Binding PullRequestNumber}" /><Run Text=" by " /><Run Text="{Binding Author}" />
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Border Background="{Binding AgeBrush}" CornerRadius="4" Padding="6,1">
+                                    <TextBlock Text="{Binding AgeLabel}" FontSize="11" FontWeight="Medium" />
+                                </Border>
+                                <Border Background="{Binding ReviewStatusBrush}" CornerRadius="4" Padding="6,1">
+                                    <TextBlock Text="{Binding ReviewStatusLabel}" FontSize="11" FontWeight="Medium" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding GeneratedAtDisplay}" Opacity="0.6" FontSize="11" />
+                            <TextBlock Text="{Binding Why}" TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" FontSize="12" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Panel Grid.Column="1">
+                <ScrollViewer IsVisible="{Binding Dashboard.HasSelectedBriefing}">
+                    <StackPanel Margin="20" Spacing="12" DataContext="{Binding Dashboard.SelectedBriefing}" x:DataType="vm:BriefingCardViewModel">
+                        <SelectableTextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="#3355AAFF" CornerRadius="4" Padding="6,2">
+                                <TextBlock Text="{Binding RepositoryDisplayName}" FontSize="12" FontWeight="Medium" />
+                            </Border>
+                            <TextBlock Opacity="0.7" VerticalAlignment="Center">
+                                <Run Text="#" /><Run Text="{Binding PullRequestNumber}" /><Run Text=" by " /><Run Text="{Binding Author}" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border Background="{Binding AgeBrush}" CornerRadius="4" Padding="6,2">
+                                <TextBlock Text="{Binding AgeLabel}" FontSize="12" FontWeight="Medium" />
+                            </Border>
+                            <Border Background="{Binding ReviewStatusBrush}" CornerRadius="4" Padding="6,2">
+                                <TextBlock Text="{Binding ReviewStatusLabel}" FontSize="12" FontWeight="Medium" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding GeneratedAtDisplay}" Opacity="0.6" FontSize="12" />
+
+                        <TextBlock Text="Not structured — showing raw agent output" Foreground="OrangeRed" IsVisible="{Binding !IsWellFormed}" />
+
+                        <TextBlock Text="Why" FontWeight="SemiBold" />
+                        <SelectableTextBlock Text="{Binding Why}" TextWrapping="Wrap" />
+
+                        <TextBlock Text="High-impact files" FontWeight="SemiBold" />
+                        <ItemsControl ItemsSource="{Binding HighImpactFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <SelectableTextBlock Text="{Binding}" FontFamily="monospace" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Top risks" FontWeight="SemiBold" />
+                        <ItemsControl ItemsSource="{Binding TopRisks}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:RiskItem">
+                                    <StackPanel Spacing="2" Margin="0,0,0,8">
+                                        <SelectableTextBlock Text="{Binding LocationDisplay}" FontFamily="monospace" FontSize="11" Opacity="0.7" IsVisible="{Binding HasLocation}" />
+                                        <SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                            <Button Content="Open in Browser" Command="{Binding OpenInBrowserCommand}" />
+                            <Button Content="{Binding CopyLinkButtonLabel}" Command="{Binding CopyLinkCommand}" />
+                            <Button Content="Mark Read/Unread" Command="{Binding ToggleReadCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <TextBlock Text="Select a briefing to see details"
+                           IsVisible="{Binding !Dashboard.HasSelectedBriefing}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6" />
+            </Panel>
+        </Grid>
+        </TabItem>
+
+        <TabItem Header="Sync Log">
+            <DockPanel Margin="12">
+                <Button DockPanel.Dock="Top" Content="Clear" Command="{Binding SyncLog.ClearCommand}" Margin="0,0,0,8" />
+                <ScrollViewer Name="SyncLogScrollViewer">
+                    <ItemsControl ItemsSource="{Binding SyncLog.Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SyncLogEntryViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,1">
+                                    <TextBlock Text="{Binding TimestampDisplay}" FontFamily="monospace" Opacity="0.6" />
+                                    <SelectableTextBlock Text="{Binding Message}" Foreground="{Binding LevelBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </TabItem>
+        </TabControl>
+    </DockPanel>
+
+</Window>

@@ -1,0 +1,62 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PrThingy.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="480"
+        x:Class="PrThingy.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Width="560" Height="680"
+        Title="PR Thingy — Settings">
+
+    <StackPanel Margin="20" Spacing="16">
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Watched repositories" FontWeight="SemiBold" />
+            <ListBox ItemsSource="{Binding Repositories}" Height="180">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:WatchedRepositoryRowViewModel">
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                            <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" />
+                            <StackPanel Grid.Column="1" Margin="8,0">
+                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding LocalPath}" Opacity="0.6" FontSize="11" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Content="Remove" Click="OnRemoveRepositoryClick" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Content="Add Repository…" Command="{Binding AddRepositoryCommand}" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Agent" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding AvailableAgents}" SelectedItem="{Binding SelectedAgent}" HorizontalAlignment="Left" MinWidth="160" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Polling interval (minutes)" FontWeight="SemiBold" />
+            <NumericUpDown Value="{Binding PollingIntervalMinutes}" Minimum="1" Maximum="1440" HorizontalAlignment="Left" Width="140" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Max open PRs synced per repository" FontWeight="SemiBold" />
+            <TextBlock Text="Repos with more open PRs than this only sync the most recently created ones."
+                       Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+            <NumericUpDown Value="{Binding MaxPullRequestsPerRepository}" Minimum="1" Maximum="1000" HorizontalAlignment="Left" Width="140" />
+        </StackPanel>
+
+        <CheckBox Content="Scan for new PRs when I close this window" IsChecked="{Binding RunScanOnClose}" />
+
+        <CheckBox Content="Sync automatically when the app starts" IsChecked="{Binding SyncOnStartup}" />
+
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" Opacity="0.7" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}" Margin="0,0,8,0" />
+            <Button Grid.Column="2" Content="Save" Command="{Binding SaveCommand}" Margin="0,0,8,0" />
+            <Button Grid.Column="3" Content="Save and Close" Command="{Binding SaveAndCloseCommand}" />
+        </Grid>
+    </StackPanel>
+
+</Window>
