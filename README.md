@@ -126,3 +126,6 @@ temp directories, and subprocess execution via `ProcessRunner`.
 ## License
 
 [Apache License 2.0](LICENSE)
+
+## File Version
+2026.07.17
