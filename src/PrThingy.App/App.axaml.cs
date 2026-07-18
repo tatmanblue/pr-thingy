@@ -7,6 +7,7 @@ using Avalonia.Markup.Xaml;
 using PrThingy.App.ViewModels;
 using PrThingy.App.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace PrThingy.App;
 
@@ -47,10 +48,25 @@ public partial class App : Application
             // mode for now. See design.md's "Invisible Assistant" concept for the deferred alternative.
             desktop.MainWindow = mainWindow;
 
-            _ = mainWindowViewModel.Dashboard.LoadCommand.ExecuteAsync(null);
+            _ = RunFireAndForgetAsync(mainWindowViewModel.Dashboard.LoadCommand.ExecuteAsync(null), serviceProvider);
+            _ = RunFireAndForgetAsync(mainWindowViewModel.CheckStartupEnvironmentCommand.ExecuteAsync(null), serviceProvider);
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // The [RelayCommand]-generated ExecuteAsync task is otherwise discarded here, so a fault
+    // would only surface as an unobserved task exception. Log it instead.
+    private static async Task RunFireAndForgetAsync(Task task, IServiceProvider serviceProvider)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception ex)
+        {
+            serviceProvider.GetRequiredService<ILogger<App>>().LogError(ex, "Startup command failed");
+        }
     }
 
     private void DisableAvaloniaDataAnnotationValidation()

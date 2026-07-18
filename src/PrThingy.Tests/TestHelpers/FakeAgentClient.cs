@@ -7,6 +7,8 @@ public sealed class FakeAgentClient(AgentType agentType, Func<string, AgentInvoc
 {
     public AgentType AgentType => agentType;
 
+    public string CliFileName => agentType.ToString().ToLowerInvariant();
+
     public int CallCount { get; private set; }
 
     public Task<AgentInvocationResult> GenerateBriefingAsync(string prompt, CancellationToken cancellationToken)

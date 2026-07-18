@@ -110,7 +110,16 @@ public partial class DashboardViewModel : ViewModelBase
             IReadOnlyList<WatchedRepository> repositories = await repositoryStore.GetAllAsync(CancellationToken.None);
 
             foreach (WatchedRepository? repository in repositories.Where(r => r.Enabled))
-                await orchestrator.SyncRepositoryAsync(repository, settings, CancellationToken.None);
+            {
+                try
+                {
+                    await orchestrator.SyncRepositoryAsync(repository, settings, CancellationToken.None);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    syncLog.Log(SyncLogLevel.Error, $"{repository.DisplayName}: sync failed — {ex.Message}");
+                }
+            }
         }
         finally
         {

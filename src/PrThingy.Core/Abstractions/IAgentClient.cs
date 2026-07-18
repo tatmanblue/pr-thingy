@@ -6,6 +6,8 @@ public interface IAgentClient
 {
     AgentType AgentType { get; }
 
+    string CliFileName { get; }
+
     Task<AgentInvocationResult> GenerateBriefingAsync(
         string prompt,
         CancellationToken cancellationToken);

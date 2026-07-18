@@ -2,6 +2,7 @@ using PrThingy.Core.Abstractions;
 using PrThingy.Core.Models;
 using PrThingy.Infrastructure.Agents;
 using PrThingy.Infrastructure.BackgroundServices;
+using PrThingy.Infrastructure.Startup;
 using PrThingy.Infrastructure.GitHub;
 using PrThingy.Infrastructure.Processes;
 using PrThingy.Infrastructure.Storage;
@@ -17,6 +18,7 @@ public static class InfrastructureServiceCollectionExtensions
         AppPaths.EnsureDirectoriesExist();
 
         services.AddSingleton<IProcessRunner, ProcessRunner>();
+        services.AddSingleton<IStartupEnvironmentChecker, StartupEnvironmentChecker>();
         services.AddSingleton<IPullRequestSource, GhCliPullRequestSource>();
 
         services.AddKeyedSingleton<IAgentClient, ClaudeCliAgentClient>(AgentType.Claude);

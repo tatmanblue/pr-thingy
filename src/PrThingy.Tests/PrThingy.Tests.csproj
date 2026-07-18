@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PrThingy.Core\PrThingy.Core.csproj" />
     <ProjectReference Include="..\PrThingy.Infrastructure\PrThingy.Infrastructure.csproj" />
+    <ProjectReference Include="..\PrThingy.App\PrThingy.App.csproj" />
   </ItemGroup>
 
   <ItemGroup>

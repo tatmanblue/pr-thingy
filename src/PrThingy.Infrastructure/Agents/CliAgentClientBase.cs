@@ -12,7 +12,7 @@ public abstract class CliAgentClientBase(IProcessRunner processRunner) : IAgentC
 {
     private static readonly TimeSpan INVOCATION_TIMEOUT = TimeSpan.FromMinutes(5);
 
-    protected abstract string CliFileName { get; }
+    public abstract string CliFileName { get; }
 
     public abstract AgentType AgentType { get; }
 

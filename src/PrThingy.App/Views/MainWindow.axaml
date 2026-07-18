@@ -24,6 +24,16 @@
             </StackPanel>
         </Border>
 
+        <Border DockPanel.Dock="Top" Padding="12,8" Background="#FFF4E5"
+                BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                IsVisible="{Binding IsStartupWarningVisible}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding StartupWarningMessage}"
+                           TextWrapping="Wrap" VerticalAlignment="Center" Foreground="Black" />
+                <Button Grid.Column="1" Content="Dismiss" Command="{Binding DismissStartupWarningCommand}" />
+            </Grid>
+        </Border>
+
         <TabControl>
         <TabItem Header="Reviews">
         <Grid ColumnDefinitions="360,*">
