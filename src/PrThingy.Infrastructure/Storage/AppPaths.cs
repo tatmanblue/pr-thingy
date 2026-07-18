@@ -33,19 +33,19 @@ public static class AppPaths
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            var appData = Environment.GetEnvironmentVariable("APPDATA")
+            string appData = Environment.GetEnvironmentVariable("APPDATA")
                 ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             return Path.Combine(appData, APP_FOLDER_NAME_TITLE_CASE);
         }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             return Path.Combine(home, "Library", "Application Support", APP_FOLDER_NAME_TITLE_CASE);
         }
 
-        var xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
-        var baseDirectory = !string.IsNullOrEmpty(xdgDataHome)
+        string? xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        string baseDirectory = !string.IsNullOrEmpty(xdgDataHome)
             ? xdgDataHome
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
         return Path.Combine(baseDirectory, APP_FOLDER_NAME_LOWER_KEBAB);

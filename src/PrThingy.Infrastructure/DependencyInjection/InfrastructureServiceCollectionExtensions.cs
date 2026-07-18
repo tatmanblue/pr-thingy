@@ -12,7 +12,7 @@ namespace PrThingy.Infrastructure.DependencyInjection;
 
 public static class InfrastructureServiceCollectionExtensions
 {
-    public static IServiceCollection AddPrThingyInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         AppPaths.EnsureDirectoriesExist();
 

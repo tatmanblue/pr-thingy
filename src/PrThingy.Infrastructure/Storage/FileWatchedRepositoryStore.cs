@@ -27,7 +27,7 @@ public sealed class FileWatchedRepositoryStore(string repositoriesFilePath) : IW
         await fileLock.WaitAsync(cancellationToken);
         try
         {
-            var all = (await ReadAllUnlockedAsync(cancellationToken)).ToList();
+            List<WatchedRepository> all = (await ReadAllUnlockedAsync(cancellationToken)).ToList();
             all.Add(repository);
             await WriteAllUnlockedAsync(all, cancellationToken);
         }
@@ -42,8 +42,8 @@ public sealed class FileWatchedRepositoryStore(string repositoriesFilePath) : IW
         await fileLock.WaitAsync(cancellationToken);
         try
         {
-            var all = (await ReadAllUnlockedAsync(cancellationToken)).ToList();
-            var index = all.FindIndex(r => r.Id == repository.Id);
+            List<WatchedRepository> all = (await ReadAllUnlockedAsync(cancellationToken)).ToList();
+            int index = all.FindIndex(r => r.Id == repository.Id);
             if (index < 0)
                 throw new InvalidOperationException($"Watched repository '{repository.Id}' not found.");
 
@@ -61,7 +61,7 @@ public sealed class FileWatchedRepositoryStore(string repositoriesFilePath) : IW
         await fileLock.WaitAsync(cancellationToken);
         try
         {
-            var all = (await ReadAllUnlockedAsync(cancellationToken)).ToList();
+            List<WatchedRepository> all = (await ReadAllUnlockedAsync(cancellationToken)).ToList();
             all.RemoveAll(r => r.Id == repositoryId);
             await WriteAllUnlockedAsync(all, cancellationToken);
         }
@@ -76,13 +76,13 @@ public sealed class FileWatchedRepositoryStore(string repositoriesFilePath) : IW
         if (!File.Exists(repositoriesFilePath))
             return [];
 
-        var json = await File.ReadAllTextAsync(repositoriesFilePath, cancellationToken);
+        string json = await File.ReadAllTextAsync(repositoriesFilePath, cancellationToken);
         return JsonSerializer.Deserialize<List<WatchedRepository>>(json, JsonOptions) ?? [];
     }
 
     private Task WriteAllUnlockedAsync(List<WatchedRepository> repositories, CancellationToken cancellationToken)
     {
-        var json = JsonSerializer.Serialize(repositories, JsonOptions);
+        string json = JsonSerializer.Serialize(repositories, JsonOptions);
         return AtomicFileWriter.WriteAsync(repositoriesFilePath, json, cancellationToken);
     }
 }

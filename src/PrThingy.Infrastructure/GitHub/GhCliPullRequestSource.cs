@@ -23,7 +23,7 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
             new ProcessRunRequest("git", ["-C", repository.LocalPath, "fetch", "origin"], Timeout: CLI_TIMEOUT),
             cancellationToken);
 
-        var listResult = await processRunner.RunAsync(
+        ProcessRunResult listResult = await processRunner.RunAsync(
             new ProcessRunRequest(
                 "gh",
                 ["pr", "list", "--json", "number,title,author,body,updatedAt,url,createdAt,isDraft,reviewRequests,reviewDecision", "--limit", maxResults.ToString(CultureInfo.InvariantCulture)],
@@ -37,7 +37,7 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
                 $"'gh pr list' failed for repository '{repository.DisplayName}': {listResult.StandardError}");
         }
 
-        var entries = JsonSerializer.Deserialize<List<GhPullRequestListEntry>>(listResult.StandardOutput, JsonOptions) ?? [];
+        List<GhPullRequestListEntry> entries = JsonSerializer.Deserialize<List<GhPullRequestListEntry>>(listResult.StandardOutput, JsonOptions) ?? [];
 
         return entries
             .Select(entry => new PullRequestSummary
@@ -59,7 +59,7 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
     public async Task<string> GetDiffAsync(
         WatchedRepository repository, int pullRequestNumber, CancellationToken cancellationToken)
     {
-        var result = await processRunner.RunAsync(
+        ProcessRunResult result = await processRunner.RunAsync(
             new ProcessRunRequest(
                 "gh",
                 ["pr", "diff", pullRequestNumber.ToString(CultureInfo.InvariantCulture)],
@@ -79,7 +79,7 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
     public async Task<string?> GetPullRequestStateAsync(
         WatchedRepository repository, int pullRequestNumber, CancellationToken cancellationToken)
     {
-        var result = await processRunner.RunAsync(
+        ProcessRunResult result = await processRunner.RunAsync(
             new ProcessRunRequest(
                 "gh",
                 ["pr", "view", pullRequestNumber.ToString(CultureInfo.InvariantCulture), "--json", "state"],
@@ -90,7 +90,7 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
         if (result.ExitCode != 0)
             return null;
 
-        var entry = JsonSerializer.Deserialize<GhPullRequestStateEntry>(result.StandardOutput, JsonOptions);
+        GhPullRequestStateEntry? entry = JsonSerializer.Deserialize<GhPullRequestStateEntry>(result.StandardOutput, JsonOptions);
         return entry?.State;
     }
 

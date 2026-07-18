@@ -15,11 +15,11 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var host = Host.CreateDefaultBuilder(args)
+        IHost host = Host.CreateDefaultBuilder(args)
             .ConfigureServices(services => services
-                .AddPrThingyCore()
-                .AddPrThingyInfrastructure()
-                .AddPrThingyViewModels())
+                .AddCore()
+                .AddInfrastructure()
+                .AddViewModels())
             .Build();
 
         host.Start();

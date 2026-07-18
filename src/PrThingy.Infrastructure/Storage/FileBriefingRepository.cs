@@ -11,18 +11,18 @@ public sealed class FileBriefingRepository(string briefingsDirectory) : IBriefin
 
     public async Task<Briefing?> GetAsync(string repositoryStorageKey, int pullRequestNumber, CancellationToken cancellationToken)
     {
-        var path = BriefingFilePath(repositoryStorageKey, pullRequestNumber);
+        string path = BriefingFilePath(repositoryStorageKey, pullRequestNumber);
         if (!File.Exists(path))
             return null;
 
-        var json = await File.ReadAllTextAsync(path, cancellationToken);
+        string json = await File.ReadAllTextAsync(path, cancellationToken);
         return JsonSerializer.Deserialize<Briefing>(json, JsonOptions);
     }
 
     public async Task SaveAsync(Briefing briefing, CancellationToken cancellationToken)
     {
-        var path = BriefingFilePath(briefing.RepositoryStorageKey, briefing.PullRequestNumber);
-        var json = JsonSerializer.Serialize(briefing, JsonOptions);
+        string path = BriefingFilePath(briefing.RepositoryStorageKey, briefing.PullRequestNumber);
+        string json = JsonSerializer.Serialize(briefing, JsonOptions);
 
         await writeLock.WaitAsync(cancellationToken);
         try
@@ -40,13 +40,13 @@ public sealed class FileBriefingRepository(string briefingsDirectory) : IBriefin
         if (!Directory.Exists(briefingsDirectory))
             return [];
 
-        var briefings = new List<Briefing>();
-        foreach (var repositoryDirectory in Directory.EnumerateDirectories(briefingsDirectory))
+        List<Briefing> briefings = new List<Briefing>();
+        foreach (string repositoryDirectory in Directory.EnumerateDirectories(briefingsDirectory))
         {
-            foreach (var file in Directory.EnumerateFiles(repositoryDirectory, "pr-*.json"))
+            foreach (string file in Directory.EnumerateFiles(repositoryDirectory, "pr-*.json"))
             {
-                var json = await File.ReadAllTextAsync(file, cancellationToken);
-                var briefing = JsonSerializer.Deserialize<Briefing>(json, JsonOptions);
+                string json = await File.ReadAllTextAsync(file, cancellationToken);
+                Briefing? briefing = JsonSerializer.Deserialize<Briefing>(json, JsonOptions);
                 if (briefing is not null)
                     briefings.Add(briefing);
             }
@@ -57,15 +57,15 @@ public sealed class FileBriefingRepository(string briefingsDirectory) : IBriefin
 
     public async Task<IReadOnlyList<Briefing>> GetAllForRepositoryAsync(string repositoryStorageKey, CancellationToken cancellationToken)
     {
-        var repositoryDirectory = Path.Combine(briefingsDirectory, repositoryStorageKey);
+        string repositoryDirectory = Path.Combine(briefingsDirectory, repositoryStorageKey);
         if (!Directory.Exists(repositoryDirectory))
             return [];
 
-        var briefings = new List<Briefing>();
-        foreach (var file in Directory.EnumerateFiles(repositoryDirectory, "pr-*.json"))
+        List<Briefing> briefings = new List<Briefing>();
+        foreach (string file in Directory.EnumerateFiles(repositoryDirectory, "pr-*.json"))
         {
-            var json = await File.ReadAllTextAsync(file, cancellationToken);
-            var briefing = JsonSerializer.Deserialize<Briefing>(json, JsonOptions);
+            string json = await File.ReadAllTextAsync(file, cancellationToken);
+            Briefing? briefing = JsonSerializer.Deserialize<Briefing>(json, JsonOptions);
             if (briefing is not null)
                 briefings.Add(briefing);
         }
@@ -75,7 +75,7 @@ public sealed class FileBriefingRepository(string briefingsDirectory) : IBriefin
 
     public async Task SetReadStateAsync(string repositoryStorageKey, int pullRequestNumber, bool isRead, CancellationToken cancellationToken)
     {
-        var existing = await GetAsync(repositoryStorageKey, pullRequestNumber, cancellationToken);
+        Briefing? existing = await GetAsync(repositoryStorageKey, pullRequestNumber, cancellationToken);
         if (existing is null)
             return;
 
@@ -85,7 +85,7 @@ public sealed class FileBriefingRepository(string briefingsDirectory) : IBriefin
 
     public Task RemoveAsync(string repositoryStorageKey, int pullRequestNumber, CancellationToken cancellationToken)
     {
-        var path = BriefingFilePath(repositoryStorageKey, pullRequestNumber);
+        string path = BriefingFilePath(repositoryStorageKey, pullRequestNumber);
         if (File.Exists(path))
             File.Delete(path);
 

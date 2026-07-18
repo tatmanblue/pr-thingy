@@ -13,7 +13,7 @@ public class GhCliPullRequestSourceTests
     [Fact]
     public async Task GetOpenPullRequestsAsync_PassesMaxResultsAsGhLimitFlag()
     {
-        var processRunner = new Mock<IProcessRunner>();
+        Mock<IProcessRunner> processRunner = new Mock<IProcessRunner>();
         processRunner
             .Setup(p => p.RunAsync(It.Is<ProcessRunRequest>(r => r.FileName == "git"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessRunResult(0, string.Empty, string.Empty, false));
@@ -21,7 +21,7 @@ public class GhCliPullRequestSourceTests
             .Setup(p => p.RunAsync(It.Is<ProcessRunRequest>(r => r.FileName == "gh"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessRunResult(0, "[]", string.Empty, false));
 
-        var source = new GhCliPullRequestSource(processRunner.Object);
+        GhCliPullRequestSource source = new GhCliPullRequestSource(processRunner.Object);
 
         await source.GetOpenPullRequestsAsync(Repository(), 45, CancellationToken.None);
 
@@ -32,7 +32,7 @@ public class GhCliPullRequestSourceTests
 
     private static bool HasLimitArgument(IReadOnlyList<string> arguments, string expectedValue)
     {
-        for (var i = 0; i < arguments.Count - 1; i++)
+        for (int i = 0; i < arguments.Count - 1; i++)
         {
             if (arguments[i] == "--limit" && arguments[i + 1] == expectedValue)
                 return true;
@@ -61,7 +61,7 @@ public class GhCliPullRequestSourceTests
             ]
             """;
 
-        var processRunner = new Mock<IProcessRunner>();
+        Mock<IProcessRunner> processRunner = new Mock<IProcessRunner>();
         processRunner
             .Setup(p => p.RunAsync(It.Is<ProcessRunRequest>(r => r.FileName == "git"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessRunResult(0, string.Empty, string.Empty, false));
@@ -69,28 +69,28 @@ public class GhCliPullRequestSourceTests
             .Setup(p => p.RunAsync(It.Is<ProcessRunRequest>(r => r.FileName == "gh"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ProcessRunResult(0, listJson, string.Empty, false));
 
-        var source = new GhCliPullRequestSource(processRunner.Object);
+        GhCliPullRequestSource source = new GhCliPullRequestSource(processRunner.Object);
 
-        var results = await source.GetOpenPullRequestsAsync(Repository(), 30, CancellationToken.None);
+        IReadOnlyList<PullRequestSummary> results = await source.GetOpenPullRequestsAsync(Repository(), 30, CancellationToken.None);
 
-        var ready = results.Single(r => r.Number == 1);
+        PullRequestSummary ready = results.Single(r => r.Number == 1);
         Assert.Equal(new DateTimeOffset(2026, 6, 1, 0, 0, 0, TimeSpan.Zero), ready.CreatedAtUtc);
         Assert.False(ready.IsDraft);
         Assert.True(ready.ReviewRequested);
         Assert.Equal("REVIEW_REQUIRED", ready.ReviewDecision);
 
-        var draft = results.Single(r => r.Number == 2);
+        PullRequestSummary draft = results.Single(r => r.Number == 2);
         Assert.True(draft.IsDraft);
         Assert.False(draft.ReviewRequested);
 
-        var noReviewers = results.Single(r => r.Number == 3);
+        PullRequestSummary noReviewers = results.Single(r => r.Number == 3);
         Assert.False(noReviewers.IsDraft);
         Assert.False(noReviewers.ReviewRequested);
         Assert.Null(noReviewers.ReviewDecision);
 
         // The #14580 case: everyone requested has already reviewed, so reviewRequests is empty
         // even though the PR was very much reviewed — reviewDecision is what actually shows that.
-        var approved = results.Single(r => r.Number == 4);
+        PullRequestSummary approved = results.Single(r => r.Number == 4);
         Assert.False(approved.ReviewRequested);
         Assert.Equal("APPROVED", approved.ReviewDecision);
     }

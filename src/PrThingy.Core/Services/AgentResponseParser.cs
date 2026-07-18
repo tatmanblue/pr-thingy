@@ -8,16 +8,16 @@ public static class AgentResponseParser
 {
     public static ParsedBriefingContent Parse(string rawOutput)
     {
-        var candidate = rawOutput.Trim();
+        string candidate = rawOutput.Trim();
 
-        if (TryDeserialize(candidate, out var parsed))
+        if (TryDeserialize(candidate, out ParsedBriefingContent? parsed))
             return parsed;
 
-        var unfenced = StripMarkdownFence(candidate);
+        string unfenced = StripMarkdownFence(candidate);
         if (unfenced != candidate && TryDeserialize(unfenced, out parsed))
             return parsed;
 
-        var extracted = ExtractBracedSubstring(unfenced);
+        string? extracted = ExtractBracedSubstring(unfenced);
         if (extracted is not null && TryDeserialize(extracted, out parsed))
             return parsed;
 
@@ -32,7 +32,7 @@ public static class AgentResponseParser
     {
         try
         {
-            var schema = JsonSerializer.Deserialize<BriefingJsonSchema>(json, JsonOptions);
+            BriefingJsonSchema? schema = JsonSerializer.Deserialize<BriefingJsonSchema>(json, JsonOptions);
             if (schema is null || string.IsNullOrWhiteSpace(schema.Why))
             {
                 result = default!;
@@ -55,16 +55,16 @@ public static class AgentResponseParser
 
     private static string StripMarkdownFence(string text)
     {
-        var trimmed = text.Trim();
+        string trimmed = text.Trim();
         if (!trimmed.StartsWith("```"))
             return text;
 
-        var firstNewline = trimmed.IndexOf('\n');
+        int firstNewline = trimmed.IndexOf('\n');
         if (firstNewline < 0)
             return text;
 
-        var withoutOpeningFence = trimmed[(firstNewline + 1)..];
-        var closingFenceIndex = withoutOpeningFence.LastIndexOf("```", StringComparison.Ordinal);
+        string withoutOpeningFence = trimmed[(firstNewline + 1)..];
+        int closingFenceIndex = withoutOpeningFence.LastIndexOf("```", StringComparison.Ordinal);
         return closingFenceIndex >= 0
             ? withoutOpeningFence[..closingFenceIndex].Trim()
             : withoutOpeningFence.Trim();
@@ -72,8 +72,8 @@ public static class AgentResponseParser
 
     private static string? ExtractBracedSubstring(string text)
     {
-        var start = text.IndexOf('{');
-        var end = text.LastIndexOf('}');
+        int start = text.IndexOf('{');
+        int end = text.LastIndexOf('}');
         return start >= 0 && end > start ? text[start..(end + 1)] : null;
     }
 

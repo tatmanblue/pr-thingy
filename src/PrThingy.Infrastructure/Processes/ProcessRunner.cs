@@ -8,7 +8,7 @@ public sealed class ProcessRunner : IProcessRunner
 {
     public async Task<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken)
     {
-        using var process = new Process
+        using Process process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
@@ -24,16 +24,16 @@ public sealed class ProcessRunner : IProcessRunner
             }
         };
 
-        foreach (var argument in request.Arguments)
+        foreach (string argument in request.Arguments)
             process.StartInfo.ArgumentList.Add(argument);
 
-        using var timeoutCts = request.Timeout is { } timeout
+        using CancellationTokenSource? timeoutCts = request.Timeout is { } timeout
             ? new CancellationTokenSource(timeout)
             : null;
-        using var linkedCts = timeoutCts is null
+        using CancellationTokenSource? linkedCts = timeoutCts is null
             ? null
             : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-        var effectiveToken = linkedCts?.Token ?? cancellationToken;
+        CancellationToken effectiveToken = linkedCts?.Token ?? cancellationToken;
 
         process.Start();
 
@@ -43,10 +43,10 @@ public sealed class ProcessRunner : IProcessRunner
             process.StandardInput.Close();
         }
 
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(effectiveToken);
-        var stderrTask = process.StandardError.ReadToEndAsync(effectiveToken);
+        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(effectiveToken);
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync(effectiveToken);
 
-        var timedOut = false;
+        bool timedOut = false;
         try
         {
             await process.WaitForExitAsync(effectiveToken);
@@ -60,8 +60,8 @@ public sealed class ProcessRunner : IProcessRunner
             timedOut = true;
         }
 
-        var standardOutput = await SafeReadAsync(stdoutTask);
-        var standardError = await SafeReadAsync(stderrTask);
+        string standardOutput = await SafeReadAsync(stdoutTask);
+        string standardError = await SafeReadAsync(stderrTask);
 
         return new ProcessRunResult(
             ExitCode: timedOut ? -1 : process.ExitCode,

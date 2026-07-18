@@ -26,8 +26,8 @@ public partial class MainWindow : Window
 
     private void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
-        var settingsViewModel = App.Services.GetRequiredService<SettingsViewModel>();
-        var settingsWindow = new SettingsWindow { DataContext = settingsViewModel };
+        SettingsViewModel settingsViewModel = App.Services.GetRequiredService<SettingsViewModel>();
+        SettingsWindow settingsWindow = new SettingsWindow { DataContext = settingsViewModel };
         _ = settingsViewModel.LoadCommand.ExecuteAsync(null);
         settingsWindow.ShowDialog(this);
     }

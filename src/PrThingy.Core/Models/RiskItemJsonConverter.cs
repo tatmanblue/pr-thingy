@@ -13,8 +13,8 @@ public sealed class RiskItemJsonConverter : JsonConverter<RiskItem>
         if (reader.TokenType == JsonTokenType.String)
             return new RiskItem { Description = reader.GetString() ?? string.Empty };
 
-        using var document = JsonDocument.ParseValue(ref reader);
-        var root = document.RootElement;
+        using JsonDocument document = JsonDocument.ParseValue(ref reader);
+        JsonElement root = document.RootElement;
 
         return new RiskItem
         {
@@ -38,7 +38,7 @@ public sealed class RiskItemJsonConverter : JsonConverter<RiskItem>
 
     private static string? TryGetString(JsonElement root, params string[] propertyNames)
     {
-        foreach (var property in root.EnumerateObject())
+        foreach (JsonProperty property in root.EnumerateObject())
         {
             if (Array.Exists(propertyNames, name => string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)))
                 return property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : null;
@@ -49,7 +49,7 @@ public sealed class RiskItemJsonConverter : JsonConverter<RiskItem>
 
     private static int? TryGetInt(JsonElement root, params string[] propertyNames)
     {
-        foreach (var property in root.EnumerateObject())
+        foreach (JsonProperty property in root.EnumerateObject())
         {
             if (Array.Exists(propertyNames, name => string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
                 && property.Value.ValueKind == JsonValueKind.Number)

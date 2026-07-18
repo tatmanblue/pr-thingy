@@ -20,7 +20,7 @@ public class FileWatchedRepositoryStoreTests : IDisposable
     [Fact]
     public async Task GetAllAsync_NoFileYet_ReturnsEmpty()
     {
-        var all = await store.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<WatchedRepository> all = await store.GetAllAsync(CancellationToken.None);
 
         Assert.Empty(all);
     }
@@ -28,10 +28,10 @@ public class FileWatchedRepositoryStoreTests : IDisposable
     [Fact]
     public async Task AddAsync_ThenGetAllAsync_RoundTrips()
     {
-        var repository = WatchedRepository.Create("my-repo", "/tmp/my-repo");
+        WatchedRepository repository = WatchedRepository.Create("my-repo", "/tmp/my-repo");
 
         await store.AddAsync(repository, CancellationToken.None);
-        var all = await store.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<WatchedRepository> all = await store.GetAllAsync(CancellationToken.None);
 
         Assert.Single(all);
         Assert.Equal(repository.Id, all[0].Id);
@@ -41,14 +41,14 @@ public class FileWatchedRepositoryStoreTests : IDisposable
     [Fact]
     public async Task UpdateAsync_ExistingRepository_PersistsChanges()
     {
-        var repository = WatchedRepository.Create("my-repo", "/tmp/my-repo");
+        WatchedRepository repository = WatchedRepository.Create("my-repo", "/tmp/my-repo");
         await store.AddAsync(repository, CancellationToken.None);
 
         repository.DisplayName = "renamed-repo";
         repository.Enabled = false;
         await store.UpdateAsync(repository, CancellationToken.None);
 
-        var all = await store.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<WatchedRepository> all = await store.GetAllAsync(CancellationToken.None);
         Assert.Equal("renamed-repo", all[0].DisplayName);
         Assert.False(all[0].Enabled);
     }
@@ -56,7 +56,7 @@ public class FileWatchedRepositoryStoreTests : IDisposable
     [Fact]
     public async Task UpdateAsync_UnknownRepository_Throws()
     {
-        var repository = WatchedRepository.Create("ghost-repo", "/tmp/ghost");
+        WatchedRepository repository = WatchedRepository.Create("ghost-repo", "/tmp/ghost");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => store.UpdateAsync(repository, CancellationToken.None));
     }
@@ -64,12 +64,12 @@ public class FileWatchedRepositoryStoreTests : IDisposable
     [Fact]
     public async Task RemoveAsync_ExistingRepository_RemovesIt()
     {
-        var repository = WatchedRepository.Create("my-repo", "/tmp/my-repo");
+        WatchedRepository repository = WatchedRepository.Create("my-repo", "/tmp/my-repo");
         await store.AddAsync(repository, CancellationToken.None);
 
         await store.RemoveAsync(repository.Id, CancellationToken.None);
 
-        var all = await store.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<WatchedRepository> all = await store.GetAllAsync(CancellationToken.None);
         Assert.Empty(all);
     }
 
@@ -78,7 +78,7 @@ public class FileWatchedRepositoryStoreTests : IDisposable
     {
         await store.RemoveAsync("does-not-exist", CancellationToken.None);
 
-        var all = await store.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<WatchedRepository> all = await store.GetAllAsync(CancellationToken.None);
         Assert.Empty(all);
     }
 }

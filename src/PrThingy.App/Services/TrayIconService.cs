@@ -13,7 +13,7 @@ public sealed class TrayIconService : IDisposable
 
     public TrayIconService(Window mainWindow, MainWindowViewModel viewModel, Action onExit)
     {
-        var icon = new WindowIcon(AssetLoader.Open(new Uri("avares://PrThingy.App/Assets/avalonia-logo.ico")));
+        WindowIcon icon = new WindowIcon(AssetLoader.Open(new Uri("avares://PrThingy.App/Assets/avalonia-logo.ico")));
 
         trayIcon = new TrayIcon
         {

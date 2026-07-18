@@ -9,8 +9,8 @@ public class SyncLogServiceTests
     [Fact]
     public void SyncStartedThenFinished_TogglesIsSyncing()
     {
-        var service = new SyncLogService();
-        var observedStates = new List<bool>();
+        SyncLogService service = new SyncLogService();
+        List<bool> observedStates = new List<bool>();
         service.SyncingChanged += (_, isSyncing) => observedStates.Add(isSyncing);
 
         service.SyncStarted();
@@ -25,7 +25,7 @@ public class SyncLogServiceTests
     [Fact]
     public void OverlappingSyncs_StayActiveUntilAllFinish()
     {
-        var service = new SyncLogService();
+        SyncLogService service = new SyncLogService();
 
         service.SyncStarted();
         service.SyncStarted();
@@ -41,7 +41,7 @@ public class SyncLogServiceTests
     [Fact]
     public void Log_AddsEntryAndRaisesEvent()
     {
-        var service = new SyncLogService();
+        SyncLogService service = new SyncLogService();
         SyncLogEntry? raised = null;
         service.EntryAdded += (_, entry) => raised = entry;
 
@@ -56,7 +56,7 @@ public class SyncLogServiceTests
     [Fact]
     public void Clear_RemovesAllEntries()
     {
-        var service = new SyncLogService();
+        SyncLogService service = new SyncLogService();
         service.Log(SyncLogLevel.Info, "one");
         service.Log(SyncLogLevel.Info, "two");
 

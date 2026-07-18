@@ -17,7 +17,7 @@ public sealed class FileAppSettingsStore(string settingsFilePath) : IAppSettings
         await fileLock.WaitAsync(cancellationToken);
         try
         {
-            var json = await File.ReadAllTextAsync(settingsFilePath, cancellationToken);
+            string json = await File.ReadAllTextAsync(settingsFilePath, cancellationToken);
             return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
         }
         finally
@@ -28,7 +28,7 @@ public sealed class FileAppSettingsStore(string settingsFilePath) : IAppSettings
 
     public async Task SaveAsync(AppSettings settings, CancellationToken cancellationToken)
     {
-        var json = JsonSerializer.Serialize(settings, JsonOptions);
+        string json = JsonSerializer.Serialize(settings, JsonOptions);
 
         await fileLock.WaitAsync(cancellationToken);
         try

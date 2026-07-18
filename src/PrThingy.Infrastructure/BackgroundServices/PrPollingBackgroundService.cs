@@ -15,22 +15,22 @@ public sealed class PrPollingBackgroundService(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var isFirstRun = true;
+        bool isFirstRun = true;
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var settings = await settingsStore.LoadAsync(stoppingToken);
-            var shouldSync = !isFirstRun || settings.SyncOnStartup;
+            AppSettings settings = await settingsStore.LoadAsync(stoppingToken);
+            bool shouldSync = !isFirstRun || settings.SyncOnStartup;
             isFirstRun = false;
 
             if (shouldSync)
             {
-                var repositories = await repositoryStore.GetAllAsync(stoppingToken);
+                IReadOnlyList<WatchedRepository> repositories = await repositoryStore.GetAllAsync(stoppingToken);
 
                 syncLog.SyncStarted();
                 try
                 {
-                    foreach (var repository in repositories.Where(r => r.Enabled))
+                    foreach (WatchedRepository? repository in repositories.Where(r => r.Enabled))
                     {
                         try
                         {

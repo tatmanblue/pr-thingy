@@ -50,7 +50,7 @@ public class PrSyncOrchestratorTests
 
     private static Mock<IAgentClient> SucceedingAgentClient(string rawOutput = """{"why": "ok", "highImpactFiles": [], "topRisks": []}""")
     {
-        var agent = new Mock<IAgentClient>();
+        Mock<IAgentClient> agent = new Mock<IAgentClient>();
         agent.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AgentInvocationResult(true, rawOutput, null, TimeSpan.Zero));
         return agent;
@@ -59,26 +59,26 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_NewPullRequest_GeneratesAndSavesBriefing()
     {
-        var repository = Repository();
-        var pr = PullRequest(1, DateTimeOffset.UtcNow);
+        WatchedRepository repository = Repository();
+        PullRequestSummary pr = PullRequest(1, DateTimeOffset.UtcNow);
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([pr]);
         pullRequestSource.Setup(s => s.GetDiffAsync(repository, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync("diff");
 
-        var briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
         briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Briefing?)null);
 
-        var agentClient = SucceedingAgentClient();
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IAgentClient> agentClient = SucceedingAgentClient();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
         agentClientFactory.Setup(f => f.GetClient(AgentType.Claude)).Returns(agentClient.Object);
 
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        var count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+        int count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
 
         Assert.Equal(1, count);
         briefingRepository.Verify(r => r.SaveAsync(It.Is<Briefing>(b => b.PullRequestNumber == 1 && b.Why == "ok"), It.IsAny<CancellationToken>()), Times.Once);
@@ -87,11 +87,11 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_UpToDateBriefingExists_SkipsRegeneration()
     {
-        var repository = Repository();
-        var updatedAt = DateTimeOffset.UtcNow;
-        var pr = PullRequest(1, updatedAt);
+        WatchedRepository repository = Repository();
+        DateTimeOffset updatedAt = DateTimeOffset.UtcNow;
+        PullRequestSummary pr = PullRequest(1, updatedAt);
 
-        var existingBriefing = new Briefing
+        Briefing existingBriefing = new Briefing
         {
             RepositoryStorageKey = repository.StorageKey,
             RepositoryDisplayName = repository.DisplayName,
@@ -108,19 +108,19 @@ public class PrSyncOrchestratorTests
             IsWellFormed = true
         };
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([pr]);
 
-        var briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
         briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingBriefing);
 
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
 
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        var count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+        int count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
 
         Assert.Equal(0, count);
         pullRequestSource.Verify(s => s.GetDiffAsync(It.IsAny<WatchedRepository>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -130,12 +130,12 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_PullRequestUpdatedSinceLastBriefing_Regenerates()
     {
-        var repository = Repository();
-        var staleUpdatedAt = DateTimeOffset.UtcNow.AddDays(-1);
-        var freshUpdatedAt = DateTimeOffset.UtcNow;
-        var pr = PullRequest(1, freshUpdatedAt);
+        WatchedRepository repository = Repository();
+        DateTimeOffset staleUpdatedAt = DateTimeOffset.UtcNow.AddDays(-1);
+        DateTimeOffset freshUpdatedAt = DateTimeOffset.UtcNow;
+        PullRequestSummary pr = PullRequest(1, freshUpdatedAt);
 
-        var staleBriefing = new Briefing
+        Briefing staleBriefing = new Briefing
         {
             RepositoryStorageKey = repository.StorageKey,
             RepositoryDisplayName = repository.DisplayName,
@@ -152,23 +152,23 @@ public class PrSyncOrchestratorTests
             IsWellFormed = true
         };
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([pr]);
         pullRequestSource.Setup(s => s.GetDiffAsync(repository, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync("new diff");
 
-        var briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
         briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(staleBriefing);
 
-        var agentClient = SucceedingAgentClient("""{"why": "updated", "highImpactFiles": [], "topRisks": []}""");
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IAgentClient> agentClient = SucceedingAgentClient("""{"why": "updated", "highImpactFiles": [], "topRisks": []}""");
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
         agentClientFactory.Setup(f => f.GetClient(AgentType.Claude)).Returns(agentClient.Object);
 
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        var count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+        int count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
 
         Assert.Equal(1, count);
         briefingRepository.Verify(r => r.SaveAsync(It.Is<Briefing>(b => b.Why == "updated"), It.IsAny<CancellationToken>()), Times.Once);
@@ -177,29 +177,29 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_AgentInvocationFails_SkipsWithoutSaving()
     {
-        var repository = Repository();
-        var pr = PullRequest(1, DateTimeOffset.UtcNow);
+        WatchedRepository repository = Repository();
+        PullRequestSummary pr = PullRequest(1, DateTimeOffset.UtcNow);
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([pr]);
         pullRequestSource.Setup(s => s.GetDiffAsync(repository, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync("diff");
 
-        var briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
         briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Briefing?)null);
 
-        var agentClient = new Mock<IAgentClient>();
+        Mock<IAgentClient> agentClient = new Mock<IAgentClient>();
         agentClient.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AgentInvocationResult(false, string.Empty, "CLI not found", TimeSpan.Zero));
 
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
         agentClientFactory.Setup(f => f.GetClient(AgentType.Claude)).Returns(agentClient.Object);
 
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        var count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+        int count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
 
         Assert.Equal(0, count);
         briefingRepository.Verify(r => r.SaveAsync(It.IsAny<Briefing>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -208,11 +208,11 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_OnePullRequestThrows_DoesNotBlockOthers()
     {
-        var repository = Repository();
-        var failingPr = PullRequest(1, DateTimeOffset.UtcNow);
-        var succeedingPr = PullRequest(2, DateTimeOffset.UtcNow);
+        WatchedRepository repository = Repository();
+        PullRequestSummary failingPr = PullRequest(1, DateTimeOffset.UtcNow);
+        PullRequestSummary succeedingPr = PullRequest(2, DateTimeOffset.UtcNow);
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([failingPr, succeedingPr]);
         pullRequestSource.Setup(s => s.GetDiffAsync(repository, 1, It.IsAny<CancellationToken>()))
@@ -220,17 +220,17 @@ public class PrSyncOrchestratorTests
         pullRequestSource.Setup(s => s.GetDiffAsync(repository, 2, It.IsAny<CancellationToken>()))
             .ReturnsAsync("diff");
 
-        var briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
         briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Briefing?)null);
 
-        var agentClient = SucceedingAgentClient();
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IAgentClient> agentClient = SucceedingAgentClient();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
         agentClientFactory.Setup(f => f.GetClient(AgentType.Claude)).Returns(agentClient.Object);
 
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        var count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+        int count = await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
 
         Assert.Equal(1, count);
         briefingRepository.Verify(r => r.SaveAsync(It.Is<Briefing>(b => b.PullRequestNumber == 2), It.IsAny<CancellationToken>()), Times.Once);
@@ -240,25 +240,25 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_NewPullRequest_CopiesCreatedAtDraftReviewRequestedAndReviewDecisionIntoBriefing()
     {
-        var repository = Repository();
-        var createdAt = DateTimeOffset.UtcNow.AddDays(-5);
-        var pr = PullRequest(1, DateTimeOffset.UtcNow, createdAt: createdAt, isDraft: true, reviewRequested: false, reviewDecision: "APPROVED");
+        WatchedRepository repository = Repository();
+        DateTimeOffset createdAt = DateTimeOffset.UtcNow.AddDays(-5);
+        PullRequestSummary pr = PullRequest(1, DateTimeOffset.UtcNow, createdAt: createdAt, isDraft: true, reviewRequested: false, reviewDecision: "APPROVED");
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([pr]);
         pullRequestSource.Setup(s => s.GetDiffAsync(repository, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync("diff");
 
-        var briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
         briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Briefing?)null);
 
-        var agentClient = SucceedingAgentClient();
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IAgentClient> agentClient = SucceedingAgentClient();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
         agentClientFactory.Setup(f => f.GetClient(AgentType.Claude)).Returns(agentClient.Object);
 
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
         await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
 
@@ -287,17 +287,17 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_PassesMaxPullRequestsPerRepositoryThrough()
     {
-        var repository = Repository();
+        WatchedRepository repository = Repository();
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var briefingRepository = new Mock<IBriefingRepository>();
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
 
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
-        var settings = new AppSettings { SelectedAgent = AgentType.Claude, MaxPullRequestsPerRepository = 45 };
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        AppSettings settings = new AppSettings { SelectedAgent = AgentType.Claude, MaxPullRequestsPerRepository = 45 };
 
         await orchestrator.SyncRepositoryAsync(repository, settings, CancellationToken.None);
 
@@ -307,21 +307,21 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_BriefingNoLongerOpenAndMerged_RemovesBriefing()
     {
-        var repository = Repository();
-        var closedBriefing = ExistingBriefing(repository, 1);
+        WatchedRepository repository = Repository();
+        Briefing closedBriefing = ExistingBriefing(repository, 1);
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         pullRequestSource.Setup(s => s.GetPullRequestStateAsync(repository, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync("MERGED");
 
-        var briefingRepository = new Mock<IBriefingRepository>();
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
 
         // BuildOrchestrator installs a default (empty) GetAllForRepositoryAsync setup; Moq gives
         // precedence to whichever matching setup was added last, so this override must come after.
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
         briefingRepository.Setup(r => r.GetAllForRepositoryAsync(repository.StorageKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync([closedBriefing]);
 
@@ -333,20 +333,20 @@ public class PrSyncOrchestratorTests
     [Fact]
     public async Task SyncRepositoryAsync_BriefingNoLongerOpenButNotMerged_KeepsBriefing()
     {
-        var repository = Repository();
-        var closedBriefing = ExistingBriefing(repository, 1);
+        WatchedRepository repository = Repository();
+        Briefing closedBriefing = ExistingBriefing(repository, 1);
 
-        var pullRequestSource = new Mock<IPullRequestSource>();
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
         pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         pullRequestSource.Setup(s => s.GetPullRequestStateAsync(repository, 1, It.IsAny<CancellationToken>()))
             .ReturnsAsync("CLOSED");
 
-        var briefingRepository = new Mock<IBriefingRepository>();
-        var agentClientFactory = new Mock<IAgentClientFactory>();
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
 
         // See the comment in the sibling "…Merged…" test for why this setup order matters.
-        var orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
         briefingRepository.Setup(r => r.GetAllForRepositoryAsync(repository.StorageKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync([closedBriefing]);
 

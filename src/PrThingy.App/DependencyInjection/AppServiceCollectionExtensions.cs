@@ -6,7 +6,7 @@ namespace PrThingy.App.DependencyInjection;
 
 public static class AppServiceCollectionExtensions
 {
-    public static IServiceCollection AddPrThingyViewModels(this IServiceCollection services)
+    public static IServiceCollection AddViewModels(this IServiceCollection services)
     {
         services.AddSingleton<IFolderPickerService, FolderPickerService>();
         services.AddSingleton<IClipboardService, ClipboardService>();

@@ -15,6 +15,7 @@
 - Do not use `_` as a prefix for class-level fields. Use plain camelCase (e.g., `registryFilePath`).
 - When a constructor parameter name collides with a field name, disambiguate with `this.` (e.g., `this.registry = registry`).
 - Constants should be ALL_CAPS_WITH_UNDERSCORES.
+- Do not use `var` for local variable declarations — always use the explicit type. Enforced by `.editorconfig` (`csharp_style_var_*` rules) with `EnforceCodeStyleInBuild` on, so a reintroduced `var` fails the build.
 
 # Instructions for Claude
 All changes must be approved before creating these changes. Please prepare a plan of proposed changes and get confirmation before proceeding.

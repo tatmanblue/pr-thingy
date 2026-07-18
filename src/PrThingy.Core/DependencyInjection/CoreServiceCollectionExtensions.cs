@@ -6,7 +6,7 @@ namespace PrThingy.Core.DependencyInjection;
 
 public static class CoreServiceCollectionExtensions
 {
-    public static IServiceCollection AddPrThingyCore(this IServiceCollection services)
+    public static IServiceCollection AddCore(this IServiceCollection services)
     {
         services.AddSingleton<BriefingPromptBuilder>();
         services.AddSingleton<PrSyncOrchestrator>();

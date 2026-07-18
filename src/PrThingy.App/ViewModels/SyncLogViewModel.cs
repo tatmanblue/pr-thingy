@@ -14,7 +14,7 @@ public partial class SyncLogViewModel : ViewModelBase
     {
         this.syncLog = syncLog;
 
-        foreach (var entry in syncLog.Entries)
+        foreach (SyncLogEntry entry in syncLog.Entries)
             Entries.Add(new SyncLogEntryViewModel(entry));
 
         syncLog.EntryAdded += OnEntryAdded;

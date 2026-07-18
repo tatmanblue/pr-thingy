@@ -62,18 +62,18 @@ public partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     public async Task LoadAsync()
     {
-        var all = await briefingRepository.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<Briefing> all = await briefingRepository.GetAllAsync(CancellationToken.None);
 
-        foreach (var existingCard in Briefings)
+        foreach (BriefingCardViewModel existingCard in Briefings)
             existingCard.PropertyChanged -= OnBriefingCardPropertyChanged;
         Briefings.Clear();
 
-        foreach (var briefing in all.OrderByDescending(b => b.GeneratedAtUtc))
+        foreach (Briefing? briefing in all.OrderByDescending(b => b.GeneratedAtUtc))
         {
             if (ShowUnreadOnly && briefing.IsRead)
                 continue;
 
-            var card = new BriefingCardViewModel(briefing, briefingRepository, clipboardService);
+            BriefingCardViewModel card = new BriefingCardViewModel(briefing, briefingRepository, clipboardService);
             card.PropertyChanged += OnBriefingCardPropertyChanged;
             Briefings.Add(card);
         }
@@ -106,10 +106,10 @@ public partial class DashboardViewModel : ViewModelBase
         syncLog.SyncStarted();
         try
         {
-            var settings = await settingsStore.LoadAsync(CancellationToken.None);
-            var repositories = await repositoryStore.GetAllAsync(CancellationToken.None);
+            AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
+            IReadOnlyList<WatchedRepository> repositories = await repositoryStore.GetAllAsync(CancellationToken.None);
 
-            foreach (var repository in repositories.Where(r => r.Enabled))
+            foreach (WatchedRepository? repository in repositories.Where(r => r.Enabled))
                 await orchestrator.SyncRepositoryAsync(repository, settings, CancellationToken.None);
         }
         finally

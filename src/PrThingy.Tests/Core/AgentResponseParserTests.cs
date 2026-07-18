@@ -16,7 +16,7 @@ public class AgentResponseParserTests
             ]}
             """;
 
-        var result = AgentResponseParser.Parse(raw);
+        ParsedBriefingContent result = AgentResponseParser.Parse(raw);
 
         Assert.True(result.IsWellFormed);
         Assert.Equal("fixes a bug", result.Why);
@@ -35,7 +35,7 @@ public class AgentResponseParserTests
     {
         const string raw = """{"why": "fixes a bug", "highImpactFiles": [], "topRisks": ["risk 1", "risk 2"]}""";
 
-        var result = AgentResponseParser.Parse(raw);
+        ParsedBriefingContent result = AgentResponseParser.Parse(raw);
 
         Assert.True(result.IsWellFormed);
         Assert.Equal([new RiskItem { Description = "risk 1" }, new RiskItem { Description = "risk 2" }], result.TopRisks);
@@ -50,7 +50,7 @@ public class AgentResponseParserTests
             ```
             """;
 
-        var result = AgentResponseParser.Parse(raw);
+        ParsedBriefingContent result = AgentResponseParser.Parse(raw);
 
         Assert.True(result.IsWellFormed);
         Assert.Equal("adds a feature", result.Why);
@@ -67,7 +67,7 @@ public class AgentResponseParserTests
             Let me know if you need more detail.
             """;
 
-        var result = AgentResponseParser.Parse(raw);
+        ParsedBriefingContent result = AgentResponseParser.Parse(raw);
 
         Assert.True(result.IsWellFormed);
         Assert.Equal("refactor", result.Why);
@@ -78,7 +78,7 @@ public class AgentResponseParserTests
     {
         const string raw = "I couldn't analyze this PR because the diff was empty.";
 
-        var result = AgentResponseParser.Parse(raw);
+        ParsedBriefingContent result = AgentResponseParser.Parse(raw);
 
         Assert.False(result.IsWellFormed);
         Assert.Equal(raw, result.Why);
@@ -89,7 +89,7 @@ public class AgentResponseParserTests
     [Fact]
     public void Parse_EmptyString_FallsBackWithoutThrowing()
     {
-        var result = AgentResponseParser.Parse(string.Empty);
+        ParsedBriefingContent result = AgentResponseParser.Parse(string.Empty);
 
         Assert.False(result.IsWellFormed);
         Assert.Equal(string.Empty, result.Why);
@@ -100,7 +100,7 @@ public class AgentResponseParserTests
     {
         const string raw = """{"why": "cleanup", "highImpactFiles": ["x.cs"], "topRisks": [], "confidence": 0.9}""";
 
-        var result = AgentResponseParser.Parse(raw);
+        ParsedBriefingContent result = AgentResponseParser.Parse(raw);
 
         Assert.True(result.IsWellFormed);
         Assert.Equal("cleanup", result.Why);

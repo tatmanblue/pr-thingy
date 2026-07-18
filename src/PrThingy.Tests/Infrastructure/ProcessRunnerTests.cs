@@ -11,7 +11,7 @@ public class ProcessRunnerTests
     [Fact]
     public async Task RunAsync_HappyPath_CapturesExitCodeAndStdout()
     {
-        var result = await runner.RunAsync(
+        ProcessRunResult result = await runner.RunAsync(
             new ProcessRunRequest("dotnet", ["--version"]),
             CancellationToken.None);
 
@@ -23,7 +23,7 @@ public class ProcessRunnerTests
     [Fact]
     public async Task RunAsync_NonZeroExitCode_CapturesStandardError()
     {
-        var result = await runner.RunAsync(
+        ProcessRunResult result = await runner.RunAsync(
             new ProcessRunRequest("dotnet", ["not-a-real-command"]),
             CancellationToken.None);
 
@@ -34,7 +34,7 @@ public class ProcessRunnerTests
     [Fact]
     public async Task RunAsync_StandardInput_IsPassedToProcess()
     {
-        var result = await runner.RunAsync(
+        ProcessRunResult result = await runner.RunAsync(
             new ProcessRunRequest("cat", [], StandardInput: "hello from stdin"),
             CancellationToken.None);
 
@@ -45,7 +45,7 @@ public class ProcessRunnerTests
     [Fact]
     public async Task RunAsync_AlreadyCancelledToken_ThrowsOperationCanceled()
     {
-        using var cts = new CancellationTokenSource();
+        using CancellationTokenSource cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
@@ -55,7 +55,7 @@ public class ProcessRunnerTests
     [Fact]
     public async Task RunAsync_TimeoutExceeded_ReturnsTimedOutResult()
     {
-        var result = await runner.RunAsync(
+        ProcessRunResult result = await runner.RunAsync(
             new ProcessRunRequest("sleep", ["5"], Timeout: TimeSpan.FromMilliseconds(200)),
             CancellationToken.None);
 

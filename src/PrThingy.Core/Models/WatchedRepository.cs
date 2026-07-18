@@ -20,7 +20,7 @@ public sealed class WatchedRepository
 
     public static WatchedRepository Create(string displayName, string localPath)
     {
-        var id = Guid.NewGuid().ToString();
+        string id = Guid.NewGuid().ToString();
         return new WatchedRepository
         {
             Id = id,
@@ -32,8 +32,8 @@ public sealed class WatchedRepository
 
     private static string Slugify(string value)
     {
-        var builder = new StringBuilder(value.Length);
-        foreach (var c in value.ToLowerInvariant())
+        StringBuilder builder = new StringBuilder(value.Length);
+        foreach (char c in value.ToLowerInvariant())
             builder.Append(char.IsLetterOrDigit(c) ? c : '-');
 
         return builder.ToString().Trim('-');

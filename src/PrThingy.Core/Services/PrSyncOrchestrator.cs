@@ -14,15 +14,15 @@ public sealed class PrSyncOrchestrator(
 {
     public async Task<int> SyncRepositoryAsync(WatchedRepository repository, AppSettings settings, CancellationToken cancellationToken)
     {
-        var pullRequests = await pullRequestSource.GetOpenPullRequestsAsync(
+        IReadOnlyList<PullRequestSummary> pullRequests = await pullRequestSource.GetOpenPullRequestsAsync(
             repository, settings.MaxPullRequestsPerRepository, cancellationToken);
         syncLog.Log(SyncLogLevel.Info, $"{repository.DisplayName}: found {pullRequests.Count} open PR(s)");
 
-        var newOrUpdatedCount = 0;
+        int newOrUpdatedCount = 0;
 
-        foreach (var pullRequest in pullRequests)
+        foreach (PullRequestSummary pullRequest in pullRequests)
         {
-            var existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequest.Number, cancellationToken);
+            Briefing? existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequest.Number, cancellationToken);
             if (existing is not null && existing.SourcePullRequestUpdatedAtUtc >= pullRequest.UpdatedAtUtc)
                 continue;
 
@@ -30,10 +30,10 @@ public sealed class PrSyncOrchestrator(
             {
                 syncLog.Log(SyncLogLevel.Info, $"{repository.DisplayName} #{pullRequest.Number}: generating briefing");
 
-                var diff = await pullRequestSource.GetDiffAsync(repository, pullRequest.Number, cancellationToken);
-                var prompt = promptBuilder.Build(repository, pullRequest, diff);
-                var client = agentClientFactory.GetClient(settings.SelectedAgent);
-                var result = await client.GenerateBriefingAsync(prompt, cancellationToken);
+                string diff = await pullRequestSource.GetDiffAsync(repository, pullRequest.Number, cancellationToken);
+                string prompt = promptBuilder.Build(repository, pullRequest, diff);
+                IAgentClient client = agentClientFactory.GetClient(settings.SelectedAgent);
+                AgentInvocationResult result = await client.GenerateBriefingAsync(prompt, cancellationToken);
 
                 if (!result.Succeeded)
                 {
@@ -45,8 +45,8 @@ public sealed class PrSyncOrchestrator(
                     continue;
                 }
 
-                var parsed = AgentResponseParser.Parse(result.RawOutput);
-                var briefing = new Briefing
+                ParsedBriefingContent parsed = AgentResponseParser.Parse(result.RawOutput);
+                Briefing briefing = new Briefing
                 {
                     RepositoryStorageKey = repository.StorageKey,
                     RepositoryDisplayName = repository.DisplayName,
@@ -91,10 +91,10 @@ public sealed class PrSyncOrchestrator(
     private async Task RemoveMergedBriefingsAsync(
         WatchedRepository repository, IReadOnlyList<PullRequestSummary> openPullRequests, CancellationToken cancellationToken)
     {
-        var openNumbers = openPullRequests.Select(p => p.Number).ToHashSet();
-        var existingBriefings = await briefingRepository.GetAllForRepositoryAsync(repository.StorageKey, cancellationToken);
+        HashSet<int> openNumbers = openPullRequests.Select(p => p.Number).ToHashSet();
+        IReadOnlyList<Briefing> existingBriefings = await briefingRepository.GetAllForRepositoryAsync(repository.StorageKey, cancellationToken);
 
-        foreach (var briefing in existingBriefings)
+        foreach (Briefing briefing in existingBriefings)
         {
             if (openNumbers.Contains(briefing.PullRequestNumber))
                 continue;

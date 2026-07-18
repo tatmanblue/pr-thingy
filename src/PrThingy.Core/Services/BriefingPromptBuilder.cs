@@ -11,7 +11,7 @@ public sealed class BriefingPromptBuilder
 
     public string Build(WatchedRepository repository, PullRequestSummary pullRequest, string diff)
     {
-        var truncatedDiff = diff.Length > MAX_DIFF_LENGTH_CHARS
+        string truncatedDiff = diff.Length > MAX_DIFF_LENGTH_CHARS
             ? diff[..MAX_DIFF_LENGTH_CHARS] + "\n\n[diff truncated — exceeded " + MAX_DIFF_LENGTH_CHARS + " characters]"
             : diff;
 

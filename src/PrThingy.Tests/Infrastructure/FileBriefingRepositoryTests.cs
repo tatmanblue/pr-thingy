@@ -37,10 +37,10 @@ public class FileBriefingRepositoryTests : IDisposable
     [Fact]
     public async Task SaveAndGet_RoundTripsBriefing()
     {
-        var briefing = SampleBriefing();
+        Briefing briefing = SampleBriefing();
 
         await repository.SaveAsync(briefing, CancellationToken.None);
-        var loaded = await repository.GetAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
+        Briefing? loaded = await repository.GetAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
 
         Assert.NotNull(loaded);
         Assert.Equal(briefing.Why, loaded.Why);
@@ -51,7 +51,7 @@ public class FileBriefingRepositoryTests : IDisposable
     [Fact]
     public async Task GetAsync_NonExistentBriefing_ReturnsNull()
     {
-        var loaded = await repository.GetAsync("no-such-repo", 999, CancellationToken.None);
+        Briefing? loaded = await repository.GetAsync("no-such-repo", 999, CancellationToken.None);
 
         Assert.Null(loaded);
     }
@@ -59,7 +59,7 @@ public class FileBriefingRepositoryTests : IDisposable
     [Fact]
     public async Task GetAllAsync_NoBriefingsSaved_ReturnsEmpty()
     {
-        var all = await repository.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<Briefing> all = await repository.GetAllAsync(CancellationToken.None);
 
         Assert.Empty(all);
     }
@@ -70,7 +70,7 @@ public class FileBriefingRepositoryTests : IDisposable
         await repository.SaveAsync(SampleBriefing("repo-a-11111111", 1), CancellationToken.None);
         await repository.SaveAsync(SampleBriefing("repo-b-22222222", 2), CancellationToken.None);
 
-        var all = await repository.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<Briefing> all = await repository.GetAllAsync(CancellationToken.None);
 
         Assert.Equal(2, all.Count);
     }
@@ -78,11 +78,11 @@ public class FileBriefingRepositoryTests : IDisposable
     [Fact]
     public async Task SetReadStateAsync_UpdatesPersistedReadFlag()
     {
-        var briefing = SampleBriefing();
+        Briefing briefing = SampleBriefing();
         await repository.SaveAsync(briefing, CancellationToken.None);
 
         await repository.SetReadStateAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, true, CancellationToken.None);
-        var loaded = await repository.GetAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
+        Briefing? loaded = await repository.GetAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
 
         Assert.NotNull(loaded);
         Assert.True(loaded.IsRead);
@@ -93,7 +93,7 @@ public class FileBriefingRepositoryTests : IDisposable
     {
         await repository.SetReadStateAsync("no-such-repo", 999, true, CancellationToken.None);
 
-        var all = await repository.GetAllAsync(CancellationToken.None);
+        IReadOnlyList<Briefing> all = await repository.GetAllAsync(CancellationToken.None);
         Assert.Empty(all);
     }
 
@@ -103,16 +103,16 @@ public class FileBriefingRepositoryTests : IDisposable
         await repository.SaveAsync(SampleBriefing("repo-a-11111111", 1), CancellationToken.None);
         await repository.SaveAsync(SampleBriefing("repo-b-22222222", 2), CancellationToken.None);
 
-        var forRepoA = await repository.GetAllForRepositoryAsync("repo-a-11111111", CancellationToken.None);
+        IReadOnlyList<Briefing> forRepoA = await repository.GetAllForRepositoryAsync("repo-a-11111111", CancellationToken.None);
 
-        var briefing = Assert.Single(forRepoA);
+        Briefing briefing = Assert.Single(forRepoA);
         Assert.Equal(1, briefing.PullRequestNumber);
     }
 
     [Fact]
     public async Task GetAllForRepositoryAsync_UnknownRepository_ReturnsEmpty()
     {
-        var forRepo = await repository.GetAllForRepositoryAsync("no-such-repo", CancellationToken.None);
+        IReadOnlyList<Briefing> forRepo = await repository.GetAllForRepositoryAsync("no-such-repo", CancellationToken.None);
 
         Assert.Empty(forRepo);
     }
@@ -120,11 +120,11 @@ public class FileBriefingRepositoryTests : IDisposable
     [Fact]
     public async Task RemoveAsync_DeletesBriefingSoItNoLongerLoads()
     {
-        var briefing = SampleBriefing();
+        Briefing briefing = SampleBriefing();
         await repository.SaveAsync(briefing, CancellationToken.None);
 
         await repository.RemoveAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
-        var loaded = await repository.GetAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
+        Briefing? loaded = await repository.GetAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
 
         Assert.Null(loaded);
     }
@@ -159,13 +159,13 @@ public class FileBriefingRepositoryTests : IDisposable
             }
             """;
 
-        var repositoryDirectory = Directory.CreateDirectory(Path.Combine(tempDirectory.Path, "repo-abc12345"));
+        DirectoryInfo repositoryDirectory = Directory.CreateDirectory(Path.Combine(tempDirectory.Path, "repo-abc12345"));
         await File.WriteAllTextAsync(Path.Combine(repositoryDirectory.FullName, "pr-1.json"), legacyJson);
 
-        var loaded = await repository.GetAsync("repo-abc12345", 1, CancellationToken.None);
+        Briefing? loaded = await repository.GetAsync("repo-abc12345", 1, CancellationToken.None);
 
         Assert.NotNull(loaded);
-        var risk = Assert.Single(loaded.TopRisks);
+        RiskItem risk = Assert.Single(loaded.TopRisks);
         Assert.Equal("a legacy plain-string risk", risk.Description);
         Assert.Null(risk.FilePath);
         Assert.Null(risk.Line);

@@ -40,8 +40,8 @@ public partial class App : Application
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
 
-            var mainWindowViewModel = serviceProvider.GetRequiredService<MainWindowViewModel>();
-            var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
+            MainWindowViewModel mainWindowViewModel = serviceProvider.GetRequiredService<MainWindowViewModel>();
+            MainWindow mainWindow = new MainWindow { DataContext = mainWindowViewModel };
 
             // Closing the main window quits the app (background sync included) — no tray/background
             // mode for now. See design.md's "Invisible Assistant" concept for the deferred alternative.
@@ -55,10 +55,10 @@ public partial class App : Application
 
     private void DisableAvaloniaDataAnnotationValidation()
     {
-        var dataValidationPluginsToRemove =
+        DataAnnotationsValidationPlugin[] dataValidationPluginsToRemove =
             BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
 
-        foreach (var plugin in dataValidationPluginsToRemove)
+        foreach (DataAnnotationsValidationPlugin? plugin in dataValidationPluginsToRemove)
         {
             BindingPlugins.DataValidators.Remove(plugin);
         }

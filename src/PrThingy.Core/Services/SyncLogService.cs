@@ -66,7 +66,7 @@ public sealed class SyncLogService : ISyncLogService
 
     public void Log(SyncLogLevel level, string message)
     {
-        var entry = new SyncLogEntry(DateTimeOffset.UtcNow, level, message);
+        SyncLogEntry entry = new SyncLogEntry(DateTimeOffset.UtcNow, level, message);
 
         lock (gate)
         {

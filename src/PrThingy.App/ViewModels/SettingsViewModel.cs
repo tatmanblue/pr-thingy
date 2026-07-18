@@ -63,7 +63,7 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     public async Task LoadAsync()
     {
-        var settings = await settingsStore.LoadAsync(CancellationToken.None);
+        AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
         SelectedAgent = settings.SelectedAgent;
         PollingIntervalMinutes = settings.PollingIntervalMinutes;
         MaxPullRequestsPerRepository = settings.MaxPullRequestsPerRepository;
@@ -74,7 +74,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         Repositories.Clear();
         originalRepositoryIds.Clear();
-        foreach (var repository in await repositoryStore.GetAllAsync(CancellationToken.None))
+        foreach (WatchedRepository repository in await repositoryStore.GetAllAsync(CancellationToken.None))
         {
             Repositories.Add(new WatchedRepositoryRowViewModel(repository));
             originalRepositoryIds.Add(repository.Id);
@@ -84,12 +84,12 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private async Task AddRepositoryAsync()
     {
-        var folder = await folderPickerService.PickFolderAsync();
+        string? folder = await folderPickerService.PickFolderAsync();
         if (string.IsNullOrWhiteSpace(folder))
             return;
 
-        var displayName = Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-        var repository = WatchedRepository.Create(displayName, folder);
+        string displayName = Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        WatchedRepository repository = WatchedRepository.Create(displayName, folder);
 
         // Staged only — not persisted until Save/SaveAndClose, so Cancel can discard it.
         Repositories.Add(new WatchedRepositoryRowViewModel(repository));
@@ -119,12 +119,12 @@ public partial class SettingsViewModel : ViewModelBase
             SyncOnStartup = SyncOnStartup
         }, CancellationToken.None);
 
-        var currentIds = Repositories.Select(r => r.Id).ToHashSet();
+        HashSet<string> currentIds = Repositories.Select(r => r.Id).ToHashSet();
 
-        foreach (var removedId in originalRepositoryIds.Except(currentIds))
+        foreach (string? removedId in originalRepositoryIds.Except(currentIds))
             await repositoryStore.RemoveAsync(removedId, CancellationToken.None);
 
-        foreach (var row in Repositories)
+        foreach (WatchedRepositoryRowViewModel row in Repositories)
         {
             if (originalRepositoryIds.Contains(row.Id))
                 await repositoryStore.UpdateAsync(row.ToModel(), CancellationToken.None);
@@ -133,7 +133,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         originalRepositoryIds.Clear();
-        foreach (var id in currentIds)
+        foreach (string? id in currentIds)
             originalRepositoryIds.Add(id);
         originalRunScanOnClose = RunScanOnClose;
 

@@ -23,7 +23,7 @@ public class BriefingPromptBuilderTests
     [Fact]
     public void Build_IncludesSchemaInstructionsAndPullRequestDetails()
     {
-        var prompt = builder.Build(Repository(), PullRequest(), "diff --git a/x.cs b/x.cs");
+        string prompt = builder.Build(Repository(), PullRequest(), "diff --git a/x.cs b/x.cs");
 
         Assert.Contains("ONLY a single JSON object", prompt);
         Assert.Contains("\"why\"", prompt);
@@ -38,9 +38,9 @@ public class BriefingPromptBuilderTests
     [Fact]
     public void Build_OversizedDiff_TruncatesWithNote()
     {
-        var hugeDiff = new string('x', 70_000);
+        string hugeDiff = new string('x', 70_000);
 
-        var prompt = builder.Build(Repository(), PullRequest(), hugeDiff);
+        string prompt = builder.Build(Repository(), PullRequest(), hugeDiff);
 
         Assert.Contains("[diff truncated", prompt);
         Assert.DoesNotContain(new string('x', 70_000), prompt);
@@ -49,9 +49,9 @@ public class BriefingPromptBuilderTests
     [Fact]
     public void Build_SmallDiff_IsNotTruncated()
     {
-        var smallDiff = "diff --git a/x.cs b/x.cs\n+added line";
+        string smallDiff = "diff --git a/x.cs b/x.cs\n+added line";
 
-        var prompt = builder.Build(Repository(), PullRequest(), smallDiff);
+        string prompt = builder.Build(Repository(), PullRequest(), smallDiff);
 
         Assert.DoesNotContain("truncated", prompt);
         Assert.Contains(smallDiff, prompt);

@@ -11,7 +11,7 @@ public sealed class FolderPickerService : IFolderPickerService
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime { MainWindow: { } window })
             return null;
 
-        var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        IReadOnlyList<IStorageFolder> folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title = "Select a repository to watch",
             AllowMultiple = false

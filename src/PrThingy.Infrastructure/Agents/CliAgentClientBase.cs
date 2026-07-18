@@ -18,14 +18,14 @@ public abstract class CliAgentClientBase(IProcessRunner processRunner) : IAgentC
 
     public async Task<AgentInvocationResult> GenerateBriefingAsync(string prompt, CancellationToken cancellationToken)
     {
-        var stopwatch = Stopwatch.StartNew();
-        var result = await processRunner.RunAsync(
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        ProcessRunResult result = await processRunner.RunAsync(
             new ProcessRunRequest(CliFileName, ["-p", prompt], Timeout: INVOCATION_TIMEOUT),
             cancellationToken);
         stopwatch.Stop();
 
-        var succeeded = !result.TimedOut && result.ExitCode == 0;
-        var errorOutput = result.TimedOut
+        bool succeeded = !result.TimedOut && result.ExitCode == 0;
+        string? errorOutput = result.TimedOut
             ? $"'{CliFileName}' timed out after {INVOCATION_TIMEOUT}"
             : result.ExitCode != 0 ? result.StandardError : null;
 
