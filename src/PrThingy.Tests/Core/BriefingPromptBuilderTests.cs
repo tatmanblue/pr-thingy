@@ -47,6 +47,17 @@ public class BriefingPromptBuilderTests
     }
 
     [Fact]
+    public void Build_CustomMaxDiffLengthChars_TruncatesAtThatLengthInsteadOfDefault()
+    {
+        string diff = new string('x', 1_000);
+
+        string prompt = builder.Build(Repository(), PullRequest(), diff, maxDiffLengthChars: 100);
+
+        Assert.Contains("[diff truncated — exceeded 100 characters]", prompt);
+        Assert.DoesNotContain(new string('x', 1_000), prompt);
+    }
+
+    [Fact]
     public void Build_SmallDiff_IsNotTruncated()
     {
         string smallDiff = "diff --git a/x.cs b/x.cs\n+added line";

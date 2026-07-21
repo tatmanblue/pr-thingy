@@ -172,7 +172,7 @@ public partial class BriefingCardViewModel : ViewModelBase
 
             AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
             Briefing? updated = await orchestrator.GenerateAssessmentAsync(
-                repository, Briefing.PullRequestNumber, settings.SelectedAgent, CancellationToken.None);
+                repository, Briefing.PullRequestNumber, settings, CancellationToken.None);
 
             if (updated is null)
             {

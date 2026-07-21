@@ -19,11 +19,16 @@ public abstract class CliAgentClientBase(IProcessRunner processRunner) : IAgentC
 
     public abstract AgentType AgentType { get; }
 
-    public async Task<AgentInvocationResult> GenerateBriefingAsync(string prompt, CancellationToken cancellationToken)
+    protected abstract IEnumerable<string> BuildOptionArguments(AgentInvocationOptions options);
+
+    public async Task<AgentInvocationResult> GenerateBriefingAsync(
+        string prompt, AgentInvocationOptions options, CancellationToken cancellationToken)
     {
+        List<string> arguments = ["-p", ..BuildOptionArguments(options)];
+
         Stopwatch stopwatch = Stopwatch.StartNew();
         ProcessRunResult result = await processRunner.RunAsync(
-            new ProcessRunRequest(CliFileName, ["-p"], StandardInput: prompt, Timeout: INVOCATION_TIMEOUT),
+            new ProcessRunRequest(CliFileName, arguments, StandardInput: prompt, Timeout: INVOCATION_TIMEOUT),
             cancellationToken);
         stopwatch.Stop();
 

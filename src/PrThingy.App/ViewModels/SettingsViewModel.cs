@@ -38,14 +38,28 @@ public partial class SettingsViewModel : ViewModelBase
 
     public AgentType[] AvailableAgents { get; } = Enum.GetValues<AgentType>();
 
+    public AgentEffortLevel[] AvailableEffortLevels { get; } = Enum.GetValues<AgentEffortLevel>();
+
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsClaudeSelected))]
     public partial AgentType SelectedAgent { get; set; }
+
+    public bool IsClaudeSelected => SelectedAgent == AgentType.Claude;
 
     [ObservableProperty]
     public partial int PollingIntervalMinutes { get; set; }
 
     [ObservableProperty]
     public partial int MaxPullRequestsPerRepository { get; set; }
+
+    [ObservableProperty]
+    public partial string? AgentModel { get; set; }
+
+    [ObservableProperty]
+    public partial AgentEffortLevel AgentEffort { get; set; }
+
+    [ObservableProperty]
+    public partial int MaxDiffLengthChars { get; set; }
 
     [ObservableProperty]
     public partial bool RunScanOnClose { get; set; } = true;
@@ -59,6 +73,9 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSelectedAgentChanged(AgentType value) => StatusMessage = null;
     partial void OnPollingIntervalMinutesChanged(int value) => StatusMessage = null;
     partial void OnMaxPullRequestsPerRepositoryChanged(int value) => StatusMessage = null;
+    partial void OnAgentModelChanged(string? value) => StatusMessage = null;
+    partial void OnAgentEffortChanged(AgentEffortLevel value) => StatusMessage = null;
+    partial void OnMaxDiffLengthCharsChanged(int value) => StatusMessage = null;
 
     [RelayCommand]
     public async Task LoadAsync()
@@ -67,6 +84,9 @@ public partial class SettingsViewModel : ViewModelBase
         SelectedAgent = settings.SelectedAgent;
         PollingIntervalMinutes = settings.PollingIntervalMinutes;
         MaxPullRequestsPerRepository = settings.MaxPullRequestsPerRepository;
+        AgentModel = settings.AgentModel;
+        AgentEffort = settings.AgentEffort;
+        MaxDiffLengthChars = settings.MaxDiffLengthChars;
         RunScanOnClose = settings.RunScanOnSettingsClose;
         originalRunScanOnClose = settings.RunScanOnSettingsClose;
         SyncOnStartup = settings.SyncOnStartup;
@@ -115,6 +135,9 @@ public partial class SettingsViewModel : ViewModelBase
             SelectedAgent = SelectedAgent,
             PollingIntervalMinutes = PollingIntervalMinutes,
             MaxPullRequestsPerRepository = MaxPullRequestsPerRepository,
+            AgentModel = AgentModel,
+            AgentEffort = AgentEffort,
+            MaxDiffLengthChars = MaxDiffLengthChars,
             RunScanOnSettingsClose = RunScanOnClose,
             SyncOnStartup = SyncOnStartup
         }, CancellationToken.None);

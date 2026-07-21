@@ -6,7 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="480"
         x:Class="PrThingy.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Width="560" Height="680"
+        Width="560" Height="950"
         Title="PR Thingy — Settings">
 
     <StackPanel Margin="20" Spacing="16">
@@ -36,6 +36,20 @@
         </StackPanel>
 
         <StackPanel Spacing="4">
+            <TextBlock Text="Model" FontWeight="SemiBold" />
+            <TextBlock Text="Leave blank to use the CLI's default. Examples: sonnet, opus, haiku (Claude); gemini-2.5-flash (Gemini)."
+                       Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+            <TextBox Text="{Binding AgentModel}" HorizontalAlignment="Left" Width="220" Watermark="Default" />
+        </StackPanel>
+
+        <StackPanel Spacing="4" IsVisible="{Binding IsClaudeSelected}">
+            <TextBlock Text="Effort" FontWeight="SemiBold" />
+            <TextBlock Text="Reasoning effort for assessment generation. Only applies to Claude."
+                       Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+            <ComboBox ItemsSource="{Binding AvailableEffortLevels}" SelectedItem="{Binding AgentEffort}" HorizontalAlignment="Left" MinWidth="160" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
             <TextBlock Text="Polling interval (minutes)" FontWeight="SemiBold" />
             <NumericUpDown Value="{Binding PollingIntervalMinutes}" Minimum="1" Maximum="1440" HorizontalAlignment="Left" Width="140" />
         </StackPanel>
@@ -45,6 +59,13 @@
             <TextBlock Text="Repos with more open PRs than this only sync the most recently created ones."
                        Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
             <NumericUpDown Value="{Binding MaxPullRequestsPerRepository}" Minimum="1" Maximum="1000" HorizontalAlignment="Left" Width="140" />
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="Max diff size (characters)" FontWeight="SemiBold" />
+            <TextBlock Text="The main lever for controlling per-assessment cost — larger diffs cost more. A diff longer than this is truncated before being sent to the agent."
+                       Opacity="0.6" FontSize="11" TextWrapping="Wrap" />
+            <NumericUpDown Value="{Binding MaxDiffLengthChars}" Minimum="1000" Maximum="500000" Increment="1000" HorizontalAlignment="Left" Width="140" />
         </StackPanel>
 
         <CheckBox Content="Scan for new PRs when I close this window" IsChecked="{Binding RunScanOnClose}" />
