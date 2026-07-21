@@ -62,7 +62,7 @@ public partial class BriefingCardViewModel : ViewModelBase
     public IReadOnlyList<string> HighImpactFiles => Briefing.HighImpactFiles;
     public IReadOnlyList<RiskItem> TopRisks => Briefing.TopRisks;
     public bool HasAssessment => Briefing.GeneratedAtUtc.HasValue;
-    public bool IsWellFormed => Briefing.IsWellFormed == false;
+    public bool IsNotWellFormed => Briefing.IsWellFormed == false;
     public string PullRequestUrl => Briefing.PullRequestUrl;
     public DateTimeOffset? GeneratedAtUtc => Briefing.GeneratedAtUtc;
     public string GeneratedAtDisplay => Briefing.GeneratedAtUtc?.ToLocalTime().ToString("MMM d, h:mm tt") ?? "Not generated yet";
@@ -194,7 +194,7 @@ public partial class BriefingCardViewModel : ViewModelBase
         OnPropertyChanged(nameof(Why));
         OnPropertyChanged(nameof(HighImpactFiles));
         OnPropertyChanged(nameof(TopRisks));
-        OnPropertyChanged(nameof(IsWellFormed));
+        OnPropertyChanged(nameof(IsNotWellFormed));
         OnPropertyChanged(nameof(HasAssessment));
         OnPropertyChanged(nameof(GeneratedAtUtc));
         OnPropertyChanged(nameof(GeneratedAtDisplay));
