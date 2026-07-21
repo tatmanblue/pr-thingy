@@ -10,8 +10,13 @@ public interface IAgentClient
 
     Task<AgentInvocationResult> GenerateBriefingAsync(
         string prompt,
+        AgentInvocationOptions options,
         CancellationToken cancellationToken);
 }
+
+public sealed record AgentInvocationOptions(
+    string? Model,
+    AgentEffortLevel Effort);
 
 public sealed record AgentInvocationResult(
     bool Succeeded,

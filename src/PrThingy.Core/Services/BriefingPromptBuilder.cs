@@ -9,10 +9,11 @@ public sealed class BriefingPromptBuilder
     private const string JSON_SCHEMA_EXAMPLE =
         """{"why": "one or two sentence summary of the PR's intent", "highImpactFiles": ["path/one", "path/two"], "topRisks": [{"file": "path/to/file", "line": 42, "description": "risk description"}]}""";
 
-    public string Build(WatchedRepository repository, PullRequestSummary pullRequest, string diff)
+    public string Build(
+        WatchedRepository repository, PullRequestSummary pullRequest, string diff, int maxDiffLengthChars = MAX_DIFF_LENGTH_CHARS)
     {
-        string truncatedDiff = diff.Length > MAX_DIFF_LENGTH_CHARS
-            ? diff[..MAX_DIFF_LENGTH_CHARS] + "\n\n[diff truncated — exceeded " + MAX_DIFF_LENGTH_CHARS + " characters]"
+        string truncatedDiff = diff.Length > maxDiffLengthChars
+            ? diff[..maxDiffLengthChars] + "\n\n[diff truncated — exceeded " + maxDiffLengthChars + " characters]"
             : diff;
 
         return $"""

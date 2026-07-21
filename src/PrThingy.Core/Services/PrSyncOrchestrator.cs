@@ -75,7 +75,7 @@ public sealed class PrSyncOrchestrator(
     }
 
     public async Task<Briefing?> GenerateAssessmentAsync(
-        WatchedRepository repository, int pullRequestNumber, AgentType agent, CancellationToken cancellationToken)
+        WatchedRepository repository, int pullRequestNumber, AppSettings settings, CancellationToken cancellationToken)
     {
         Briefing? existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequestNumber, cancellationToken);
         if (existing is null)
@@ -106,9 +106,10 @@ public sealed class PrSyncOrchestrator(
                 ReviewRequested = existing.ReviewRequested,
                 ReviewDecision = existing.ReviewDecision
             };
-            string prompt = promptBuilder.Build(repository, pullRequest, diff);
-            IAgentClient client = agentClientFactory.GetClient(agent);
-            AgentInvocationResult result = await client.GenerateBriefingAsync(prompt, cancellationToken);
+            string prompt = promptBuilder.Build(repository, pullRequest, diff, settings.MaxDiffLengthChars);
+            IAgentClient client = agentClientFactory.GetClient(settings.SelectedAgent);
+            AgentInvocationOptions options = new AgentInvocationOptions(settings.AgentModel, settings.AgentEffort);
+            AgentInvocationResult result = await client.GenerateBriefingAsync(prompt, options, cancellationToken);
 
             if (!result.Succeeded)
             {
@@ -127,7 +128,7 @@ public sealed class PrSyncOrchestrator(
                 HighImpactFiles = parsed.HighImpactFiles,
                 TopRisks = parsed.TopRisks,
                 GeneratedAtUtc = DateTimeOffset.UtcNow,
-                GeneratedByAgent = agent,
+                GeneratedByAgent = settings.SelectedAgent,
                 IsWellFormed = parsed.IsWellFormed
             };
 

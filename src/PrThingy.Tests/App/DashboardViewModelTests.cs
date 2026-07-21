@@ -37,7 +37,7 @@ public class DashboardViewModelTests
 
         Mock<IAgentClient> agentClient = new Mock<IAgentClient>();
         agentClient
-            .Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AgentInvocationResult(true, """{"why": "ok", "highImpactFiles": [], "topRisks": []}""", null, TimeSpan.Zero));
         Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
         agentClientFactory.Setup(f => f.GetClient(AgentType.Claude)).Returns(agentClient.Object);
