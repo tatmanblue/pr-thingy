@@ -96,7 +96,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding GeneratedAtDisplay}" Opacity="0.6" FontSize="12" />
 
-                        <TextBlock Text="Not structured — showing raw agent output" Foreground="OrangeRed" IsVisible="{Binding !IsWellFormed}" />
+                        <TextBlock Text="Not structured — showing raw agent output" Foreground="OrangeRed" IsVisible="{Binding IsNotWellFormed}" />
 
                         <StackPanel Spacing="12" IsVisible="{Binding HasAssessment}">
                             <TextBlock Text="Why" FontWeight="SemiBold" />
