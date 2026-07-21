@@ -6,7 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="480"
         x:Class="PrThingy.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Width="560" Height="680"
+        Width="560" Height="950"
         Title="PR Thingy — Settings">
 
     <StackPanel Margin="20" Spacing="16">
