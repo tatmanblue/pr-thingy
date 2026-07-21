@@ -5,8 +5,11 @@ using PrThingy.Core.Models;
 namespace PrThingy.Infrastructure.Agents;
 
 /// <summary>
-/// Shared invocation logic for agent CLIs that follow the `&lt;cli&gt; -p "&lt;prompt&gt;"`
-/// non-interactive convention (confirmed for both `claude` and `gemini` at implementation time).
+/// Shared invocation logic for agent CLIs that follow the `&lt;cli&gt; -p` non-interactive
+/// convention (confirmed for both `claude` and `gemini` at implementation time), reading the
+/// prompt from stdin rather than passing it as a command-line argument — a large prompt (a PR
+/// description plus a sizeable diff) can exceed the OS command-line length limit otherwise,
+/// which on Windows surfaces as a misleading "filename or extension is too long" error.
 /// </summary>
 public abstract class CliAgentClientBase(IProcessRunner processRunner) : IAgentClient
 {
@@ -20,7 +23,7 @@ public abstract class CliAgentClientBase(IProcessRunner processRunner) : IAgentC
     {
         Stopwatch stopwatch = Stopwatch.StartNew();
         ProcessRunResult result = await processRunner.RunAsync(
-            new ProcessRunRequest(CliFileName, ["-p", prompt], Timeout: INVOCATION_TIMEOUT),
+            new ProcessRunRequest(CliFileName, ["-p"], StandardInput: prompt, Timeout: INVOCATION_TIMEOUT),
             cancellationToken);
         stopwatch.Stop();
 

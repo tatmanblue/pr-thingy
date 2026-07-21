@@ -8,6 +8,8 @@ public sealed class ProcessRunner : IProcessRunner
 {
     public async Task<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken)
     {
+        bool redirectStandardInput = request.StandardInput is not null;
+
         using Process process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -18,11 +20,16 @@ public sealed class ProcessRunner : IProcessRunner
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                RedirectStandardInput = request.StandardInput is not null,
+                RedirectStandardInput = redirectStandardInput,
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8
             }
         };
+
+        // StandardInputEncoding throws if standard input isn't redirected, so it can only be set
+        // conditionally rather than as an object initializer alongside the other encodings.
+        if (redirectStandardInput)
+            process.StartInfo.StandardInputEncoding = Encoding.UTF8;
 
         foreach (string argument in request.Arguments)
             process.StartInfo.ArgumentList.Add(argument);
@@ -37,14 +44,18 @@ public sealed class ProcessRunner : IProcessRunner
 
         process.Start();
 
+        // Start draining stdout/stderr before writing stdin: a large stdin payload (e.g. a big
+        // agent prompt) can fill the OS pipe buffer, and if the child starts producing output
+        // before it has finished reading stdin, an unread stdout/stderr pipe would deadlock
+        // against our still-in-progress stdin write.
+        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(effectiveToken);
+        Task<string> stderrTask = process.StandardError.ReadToEndAsync(effectiveToken);
+
         if (request.StandardInput is not null)
         {
             await process.StandardInput.WriteAsync(request.StandardInput);
             process.StandardInput.Close();
         }
-
-        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(effectiveToken);
-        Task<string> stderrTask = process.StandardError.ReadToEndAsync(effectiveToken);
 
         bool timedOut = false;
         try
