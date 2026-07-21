@@ -2,6 +2,7 @@ using Avalonia;
 using PrThingy.App.DependencyInjection;
 using PrThingy.Core.DependencyInjection;
 using PrThingy.Infrastructure.DependencyInjection;
+using PrThingy.Infrastructure.Startup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,14 @@ sealed class Program
             logger.LogError(e.Exception, "Unobserved task exception");
             e.SetObserved();
         };
+
+        // Must run before host.Start() (which kicks off PrPollingBackgroundService and thus the
+        // first `gh` invocation): a macOS app launched via Finder/Dock doesn't inherit the
+        // user's shell-profile PATH, so gh/claude/gemini can be unresolvable until this merges
+        // in the PATH a login shell would compute. No-op on Windows/Linux.
+        host.Services.GetRequiredService<MacOsPathEnvironmentFixer>()
+            .ApplyAsync(CancellationToken.None)
+            .GetAwaiter().GetResult();
 
         host.Start();
         try

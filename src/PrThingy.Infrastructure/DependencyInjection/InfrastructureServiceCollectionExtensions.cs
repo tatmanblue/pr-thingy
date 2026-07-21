@@ -19,6 +19,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IStartupEnvironmentChecker, StartupEnvironmentChecker>();
+        services.AddSingleton<LoginShellPathResolver>();
+        services.AddSingleton<MacOsPathEnvironmentFixer>();
         services.AddSingleton<IPullRequestSource, GhCliPullRequestSource>();
 
         services.AddKeyedSingleton<IAgentClient, ClaudeCliAgentClient>(AgentType.Claude);
