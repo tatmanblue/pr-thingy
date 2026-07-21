@@ -15,7 +15,7 @@ public class PrSyncOrchestratorTests
 
     private static PullRequestSummary PullRequest(
         int number, DateTimeOffset updatedAt, DateTimeOffset? createdAt = null, bool isDraft = false,
-        bool reviewRequested = false, string? reviewDecision = null) => new()
+        bool reviewRequested = false, string? reviewDecision = null, string headCommitSha = "sha-baseline") => new()
     {
         Number = number,
         Title = $"PR {number}",
@@ -26,10 +26,13 @@ public class PrSyncOrchestratorTests
         CreatedAtUtc = createdAt ?? updatedAt,
         IsDraft = isDraft,
         ReviewRequested = reviewRequested,
-        ReviewDecision = reviewDecision
+        ReviewDecision = reviewDecision,
+        HeadCommitSha = headCommitSha
     };
 
-    private static Briefing ExistingBriefing(WatchedRepository repository, int number, bool withAssessment = true) => new()
+    private static Briefing ExistingBriefing(
+        WatchedRepository repository, int number, bool withAssessment = true, bool isRead = false,
+        string headCommitSha = "sha-baseline") => new()
     {
         RepositoryStorageKey = repository.StorageKey,
         RepositoryDisplayName = repository.DisplayName,
@@ -45,7 +48,9 @@ public class PrSyncOrchestratorTests
         TopRisks = [],
         GeneratedAtUtc = withAssessment ? DateTimeOffset.UtcNow : null,
         GeneratedByAgent = withAssessment ? AgentType.Claude : null,
-        IsWellFormed = withAssessment ? true : null
+        IsWellFormed = withAssessment ? true : null,
+        IsRead = isRead,
+        HeadCommitSha = headCommitSha
     };
 
     private static PrSyncOrchestrator BuildOrchestrator(
@@ -158,6 +163,87 @@ public class PrSyncOrchestratorTests
             It.Is<Briefing>(b => b.Why == "already summarized" && b.GeneratedAtUtc == existing.GeneratedAtUtc),
             It.IsAny<CancellationToken>()), Times.Once);
         agentClientFactory.Verify(f => f.GetClient(It.IsAny<AgentType>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SyncRepositoryAsync_ExistingReadRecordWithNewHeadCommit_MarksUnread()
+    {
+        WatchedRepository repository = Repository();
+        PullRequestSummary pr = PullRequest(1, DateTimeOffset.UtcNow, headCommitSha: "sha-new");
+
+        Briefing existing = ExistingBriefing(repository, 1, isRead: true, headCommitSha: "sha-baseline");
+
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
+        pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([pr]);
+
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
+        briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
+
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+
+        await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+
+        briefingRepository.Verify(r => r.SaveAsync(
+            It.Is<Briefing>(b => b.IsRead == false && b.HeadCommitSha == "sha-new"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncRepositoryAsync_ExistingReadRecordWithSameHeadCommit_StaysRead()
+    {
+        WatchedRepository repository = Repository();
+        PullRequestSummary pr = PullRequest(1, DateTimeOffset.UtcNow, headCommitSha: "sha-baseline");
+
+        Briefing existing = ExistingBriefing(repository, 1, isRead: true, headCommitSha: "sha-baseline");
+
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
+        pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([pr]);
+
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
+        briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
+
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+
+        await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+
+        briefingRepository.Verify(r => r.SaveAsync(
+            It.Is<Briefing>(b => b.IsRead == true),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncRepositoryAsync_ExistingRecordWithUnknownBaselineSha_DoesNotFlipToUnread()
+    {
+        WatchedRepository repository = Repository();
+        PullRequestSummary pr = PullRequest(1, DateTimeOffset.UtcNow, headCommitSha: "sha-real");
+
+        Briefing existing = ExistingBriefing(repository, 1, isRead: true, headCommitSha: string.Empty);
+
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
+        pullRequestSource.Setup(s => s.GetOpenPullRequestsAsync(repository, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([pr]);
+
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
+        briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
+
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+
+        await orchestrator.SyncRepositoryAsync(repository, DefaultSettings(), CancellationToken.None);
+
+        briefingRepository.Verify(r => r.SaveAsync(
+            It.Is<Briefing>(b => b.IsRead == true && b.HeadCommitSha == "sha-real"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

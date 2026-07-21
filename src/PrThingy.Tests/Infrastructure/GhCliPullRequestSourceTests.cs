@@ -30,6 +30,26 @@ public class GhCliPullRequestSourceTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task GetOpenPullRequestsAsync_RequestsHeadRefOidField()
+    {
+        Mock<IProcessRunner> processRunner = new Mock<IProcessRunner>();
+        processRunner
+            .Setup(p => p.RunAsync(It.Is<ProcessRunRequest>(r => r.FileName == "git"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessRunResult(0, string.Empty, string.Empty, false));
+        processRunner
+            .Setup(p => p.RunAsync(It.Is<ProcessRunRequest>(r => r.FileName == "gh"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProcessRunResult(0, "[]", string.Empty, false));
+
+        GhCliPullRequestSource source = new GhCliPullRequestSource(processRunner.Object);
+
+        await source.GetOpenPullRequestsAsync(Repository(), 30, CancellationToken.None);
+
+        processRunner.Verify(p => p.RunAsync(
+            It.Is<ProcessRunRequest>(r => r.FileName == "gh" && r.Arguments.Any(a => a.Split(',').Contains("headRefOid"))),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private static bool HasLimitArgument(IReadOnlyList<string> arguments, string expectedValue)
     {
         for (int i = 0; i < arguments.Count - 1; i++)
@@ -48,7 +68,8 @@ public class GhCliPullRequestSourceTests
             [
               {"number": 1, "title": "Ready PR", "author": {"login": "octocat"}, "body": "", "url": "https://example.com/1",
                "updatedAt": "2026-07-01T00:00:00Z", "createdAt": "2026-06-01T00:00:00Z", "isDraft": false,
-               "reviewRequests": [{"__typename": "User", "login": "reviewer1"}], "reviewDecision": "REVIEW_REQUIRED"},
+               "reviewRequests": [{"__typename": "User", "login": "reviewer1"}], "reviewDecision": "REVIEW_REQUIRED",
+               "headRefOid": "abc123"},
               {"number": 2, "title": "Draft PR", "author": {"login": "octocat"}, "body": "", "url": "https://example.com/2",
                "updatedAt": "2026-07-02T00:00:00Z", "createdAt": "2026-06-02T00:00:00Z", "isDraft": true,
                "reviewRequests": [], "reviewDecision": null},
@@ -78,10 +99,12 @@ public class GhCliPullRequestSourceTests
         Assert.False(ready.IsDraft);
         Assert.True(ready.ReviewRequested);
         Assert.Equal("REVIEW_REQUIRED", ready.ReviewDecision);
+        Assert.Equal("abc123", ready.HeadCommitSha);
 
         PullRequestSummary draft = results.Single(r => r.Number == 2);
         Assert.True(draft.IsDraft);
         Assert.False(draft.ReviewRequested);
+        Assert.Equal(string.Empty, draft.HeadCommitSha);
 
         PullRequestSummary noReviewers = results.Single(r => r.Number == 3);
         Assert.False(noReviewers.IsDraft);

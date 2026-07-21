@@ -16,4 +16,7 @@ public sealed class PullRequestSummary
 
     /// <summary>Raw GitHub reviewDecision: "APPROVED", "CHANGES_REQUESTED", "REVIEW_REQUIRED", or null.</summary>
     public string? ReviewDecision { get; init; }
+
+    /// <summary>The PR branch's current head commit SHA (gh's headRefOid); used to detect new pushes.</summary>
+    public string HeadCommitSha { get; init; } = string.Empty;
 }
