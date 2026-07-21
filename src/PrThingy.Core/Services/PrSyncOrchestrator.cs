@@ -26,6 +26,13 @@ public sealed class PrSyncOrchestrator(
             {
                 Briefing? existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequest.Number, cancellationToken);
 
+                // An empty existing.HeadCommitSha means either a brand-new PR or a briefing
+                // persisted before this field existed — either way there's no known baseline to
+                // compare against, so it can't count as "new commits pushed" yet.
+                bool newCommitsPushed = existing is not null
+                    && existing.HeadCommitSha.Length > 0
+                    && !string.Equals(existing.HeadCommitSha, pullRequest.HeadCommitSha, StringComparison.Ordinal);
+
                 Briefing record = existing is null
                     ? new Briefing
                     {
@@ -40,7 +47,8 @@ public sealed class PrSyncOrchestrator(
                         UpdatedAtUtc = pullRequest.UpdatedAtUtc,
                         IsDraft = pullRequest.IsDraft,
                         ReviewRequested = pullRequest.ReviewRequested,
-                        ReviewDecision = pullRequest.ReviewDecision
+                        ReviewDecision = pullRequest.ReviewDecision,
+                        HeadCommitSha = pullRequest.HeadCommitSha
                     }
                     : existing with
                     {
@@ -53,7 +61,9 @@ public sealed class PrSyncOrchestrator(
                         UpdatedAtUtc = pullRequest.UpdatedAtUtc,
                         IsDraft = pullRequest.IsDraft,
                         ReviewRequested = pullRequest.ReviewRequested,
-                        ReviewDecision = pullRequest.ReviewDecision
+                        ReviewDecision = pullRequest.ReviewDecision,
+                        HeadCommitSha = pullRequest.HeadCommitSha,
+                        IsRead = newCommitsPushed ? false : existing.IsRead
                     };
 
                 await briefingRepository.SaveAsync(record, cancellationToken);

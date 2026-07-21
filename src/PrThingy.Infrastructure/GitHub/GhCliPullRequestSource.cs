@@ -26,7 +26,7 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
         ProcessRunResult listResult = await processRunner.RunAsync(
             new ProcessRunRequest(
                 "gh",
-                ["pr", "list", "--json", "number,title,author,body,updatedAt,url,createdAt,isDraft,reviewRequests,reviewDecision", "--limit", maxResults.ToString(CultureInfo.InvariantCulture)],
+                ["pr", "list", "--json", "number,title,author,body,updatedAt,url,createdAt,isDraft,reviewRequests,reviewDecision,headRefOid", "--limit", maxResults.ToString(CultureInfo.InvariantCulture)],
                 WorkingDirectory: repository.LocalPath,
                 Timeout: CLI_TIMEOUT),
             cancellationToken);
@@ -51,7 +51,8 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
                 CreatedAtUtc = entry.CreatedAt,
                 IsDraft = entry.IsDraft,
                 ReviewRequested = entry.ReviewRequests is { Count: > 0 },
-                ReviewDecision = entry.ReviewDecision
+                ReviewDecision = entry.ReviewDecision,
+                HeadCommitSha = entry.HeadRefOid ?? string.Empty
             })
             .ToList();
     }
@@ -121,6 +122,9 @@ public sealed class GhCliPullRequestSource(IProcessRunner processRunner) : IPull
 
         [JsonPropertyName("reviewDecision")]
         public string? ReviewDecision { get; set; }
+
+        [JsonPropertyName("headRefOid")]
+        public string? HeadRefOid { get; set; }
     }
 
     private sealed class GhAuthor

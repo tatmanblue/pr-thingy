@@ -41,4 +41,9 @@ public sealed record Briefing
     public bool? IsWellFormed { get; init; }
 
     public bool IsRead { get; set; }
+
+    // Not required: briefings persisted before this field existed default to empty, which is
+    // treated as "unknown baseline" during sync (see PrSyncOrchestrator) so upgrading doesn't
+    // spuriously flip every already-tracked PR to unread on the first sync after the update.
+    public string HeadCommitSha { get; init; } = string.Empty;
 }
