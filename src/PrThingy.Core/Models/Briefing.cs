@@ -1,6 +1,9 @@
 namespace PrThingy.Core.Models;
 
-public sealed class Briefing
+// Represents a tracked open PR. The PR-metadata fields are always populated by sync;
+// the assessment fields (Why/HighImpactFiles/TopRisks/GeneratedAtUtc/GeneratedByAgent/
+// IsWellFormed) stay null until the agent has been run for this PR via GenerateAssessmentAsync.
+public sealed record Briefing
 {
     public required string RepositoryStorageKey { get; init; }
     public required string RepositoryDisplayName { get; init; }
@@ -8,19 +11,20 @@ public sealed class Briefing
     public required string Title { get; init; }
     public required string Author { get; init; }
     public required string PullRequestUrl { get; init; }
-    public required string Why { get; init; }
-    public required IReadOnlyList<string> HighImpactFiles { get; init; }
-    public required IReadOnlyList<RiskItem> TopRisks { get; init; }
-    public required DateTimeOffset GeneratedAtUtc { get; init; }
 
-    /// <summary>
-    /// The PR's `updatedAt` at the time this briefing was generated. Compared against the
-    /// PR's current `updatedAt` on each sync to decide whether the briefing is stale and
-    /// needs regenerating.
-    /// </summary>
-    public required DateTimeOffset SourcePullRequestUpdatedAtUtc { get; init; }
+    // Not required: briefings persisted before this field existed must keep loading, defaulting
+    // to an empty description. Needed to rebuild the agent prompt on-demand without an extra gh call.
+    public string Body { get; init; } = string.Empty;
 
-    public required AgentType GeneratedByAgent { get; init; }
+    // Not required: briefings persisted before this field existed must keep loading, defaulting
+    // to DateTimeOffset.MinValue. Refreshed on every sync regardless of assessment state.
+    public DateTimeOffset UpdatedAtUtc { get; init; }
+
+    public string? Why { get; init; }
+    public IReadOnlyList<string> HighImpactFiles { get; init; } = [];
+    public IReadOnlyList<RiskItem> TopRisks { get; init; } = [];
+    public DateTimeOffset? GeneratedAtUtc { get; init; }
+    public AgentType? GeneratedByAgent { get; init; }
 
     // Not required: briefings persisted before these fields existed must keep loading, defaulting
     // to CreatedAtUtc = DateTimeOffset.MinValue (bucketed as "Old") and the other flags to false.
@@ -30,10 +34,11 @@ public sealed class Briefing
     public string? ReviewDecision { get; init; }
 
     /// <summary>
-    /// False when the agent's raw output could not be parsed into the expected JSON shape —
-    /// Why then holds the raw output verbatim and HighImpactFiles/TopRisks are empty.
+    /// Null until an assessment has been generated. False when the agent's raw output could not
+    /// be parsed into the expected JSON shape — Why then holds the raw output verbatim and
+    /// HighImpactFiles/TopRisks are empty.
     /// </summary>
-    public required bool IsWellFormed { get; init; }
+    public bool? IsWellFormed { get; init; }
 
     public bool IsRead { get; set; }
 }

@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using PrThingy.App.Services;
 using PrThingy.Core.Abstractions;
 using PrThingy.Core.Models;
+using PrThingy.Core.Services;
 
 namespace PrThingy.App.ViewModels;
 
@@ -30,28 +31,41 @@ public partial class BriefingCardViewModel : ViewModelBase
 
     private readonly IBriefingRepository briefingRepository;
     private readonly IClipboardService clipboardService;
+    private readonly IWatchedRepositoryStore repositoryStore;
+    private readonly IAppSettingsStore settingsStore;
+    private readonly PrSyncOrchestrator orchestrator;
 
-    public BriefingCardViewModel(Briefing briefing, IBriefingRepository briefingRepository, IClipboardService clipboardService)
+    public BriefingCardViewModel(
+        Briefing briefing,
+        IBriefingRepository briefingRepository,
+        IClipboardService clipboardService,
+        IWatchedRepositoryStore repositoryStore,
+        IAppSettingsStore settingsStore,
+        PrSyncOrchestrator orchestrator)
     {
         Briefing = briefing;
         this.briefingRepository = briefingRepository;
         this.clipboardService = clipboardService;
+        this.repositoryStore = repositoryStore;
+        this.settingsStore = settingsStore;
+        this.orchestrator = orchestrator;
         IsRead = briefing.IsRead;
     }
 
-    public Briefing Briefing { get; }
+    public Briefing Briefing { get; private set; }
 
     public int PullRequestNumber => Briefing.PullRequestNumber;
     public string Title => Briefing.Title;
     public string Author => Briefing.Author;
     public string RepositoryDisplayName => Briefing.RepositoryDisplayName;
-    public string Why => Briefing.Why;
+    public string Why => Briefing.Why ?? string.Empty;
     public IReadOnlyList<string> HighImpactFiles => Briefing.HighImpactFiles;
     public IReadOnlyList<RiskItem> TopRisks => Briefing.TopRisks;
-    public bool IsWellFormed => Briefing.IsWellFormed;
+    public bool HasAssessment => Briefing.GeneratedAtUtc.HasValue;
+    public bool IsWellFormed => Briefing.IsWellFormed == false;
     public string PullRequestUrl => Briefing.PullRequestUrl;
-    public DateTimeOffset GeneratedAtUtc => Briefing.GeneratedAtUtc;
-    public string GeneratedAtDisplay => Briefing.GeneratedAtUtc.ToLocalTime().ToString("MMM d, h:mm tt");
+    public DateTimeOffset? GeneratedAtUtc => Briefing.GeneratedAtUtc;
+    public string GeneratedAtDisplay => Briefing.GeneratedAtUtc?.ToLocalTime().ToString("MMM d, h:mm tt") ?? "Not generated yet";
 
     private TimeSpan Age => DateTimeOffset.UtcNow - Briefing.CreatedAtUtc;
 
@@ -127,5 +141,62 @@ public partial class BriefingCardViewModel : ViewModelBase
         CopyLinkButtonLabel = COPY_LINK_CONFIRMATION_LABEL;
         await Task.Delay(TimeSpan.FromSeconds(2));
         CopyLinkButtonLabel = COPY_LINK_LABEL;
+    }
+
+    [ObservableProperty]
+    public partial bool IsGeneratingAssessment { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAssessmentError))]
+    public partial string? AssessmentErrorMessage { get; set; }
+
+    public bool HasAssessmentError => !string.IsNullOrEmpty(AssessmentErrorMessage);
+
+    [RelayCommand]
+    private async Task GenerateAssessmentAsync()
+    {
+        if (IsGeneratingAssessment)
+            return;
+
+        IsGeneratingAssessment = true;
+        AssessmentErrorMessage = null;
+        try
+        {
+            IReadOnlyList<WatchedRepository> repositories = await repositoryStore.GetAllAsync(CancellationToken.None);
+            WatchedRepository? repository = repositories.FirstOrDefault(r => r.StorageKey == Briefing.RepositoryStorageKey);
+            if (repository is null)
+            {
+                AssessmentErrorMessage = "Repository is no longer being watched.";
+                return;
+            }
+
+            AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
+            Briefing? updated = await orchestrator.GenerateAssessmentAsync(
+                repository, Briefing.PullRequestNumber, settings.SelectedAgent, CancellationToken.None);
+
+            if (updated is null)
+            {
+                AssessmentErrorMessage = "Failed to generate assessment. Check the Sync Log tab for details.";
+                return;
+            }
+
+            UpdateBriefing(updated);
+        }
+        finally
+        {
+            IsGeneratingAssessment = false;
+        }
+    }
+
+    private void UpdateBriefing(Briefing updated)
+    {
+        Briefing = updated;
+        OnPropertyChanged(nameof(Why));
+        OnPropertyChanged(nameof(HighImpactFiles));
+        OnPropertyChanged(nameof(TopRisks));
+        OnPropertyChanged(nameof(IsWellFormed));
+        OnPropertyChanged(nameof(HasAssessment));
+        OnPropertyChanged(nameof(GeneratedAtUtc));
+        OnPropertyChanged(nameof(GeneratedAtDisplay));
     }
 }
