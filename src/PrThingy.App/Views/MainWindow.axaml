@@ -65,7 +65,10 @@
                                 </Border>
                             </StackPanel>
                             <TextBlock Text="{Binding GeneratedAtDisplay}" Opacity="0.6" FontSize="11" />
-                            <TextBlock Text="{Binding Why}" TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" FontSize="12" />
+                            <TextBlock Text="{Binding Why}" TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" FontSize="12"
+                                       IsVisible="{Binding HasAssessment}" />
+                            <TextBlock Text="Assessment not generated yet" FontStyle="Italic" Opacity="0.6" FontSize="12"
+                                       IsVisible="{Binding !HasAssessment}" />
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -95,35 +98,48 @@
 
                         <TextBlock Text="Not structured — showing raw agent output" Foreground="OrangeRed" IsVisible="{Binding !IsWellFormed}" />
 
-                        <TextBlock Text="Why" FontWeight="SemiBold" />
-                        <SelectableTextBlock Text="{Binding Why}" TextWrapping="Wrap" />
+                        <StackPanel Spacing="12" IsVisible="{Binding HasAssessment}">
+                            <TextBlock Text="Why" FontWeight="SemiBold" />
+                            <SelectableTextBlock Text="{Binding Why}" TextWrapping="Wrap" />
 
-                        <TextBlock Text="High-impact files" FontWeight="SemiBold" />
-                        <ItemsControl ItemsSource="{Binding HighImpactFiles}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <SelectableTextBlock Text="{Binding}" FontFamily="monospace" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            <TextBlock Text="High-impact files" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding HighImpactFiles}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <SelectableTextBlock Text="{Binding}" FontFamily="monospace" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
-                        <TextBlock Text="Top risks" FontWeight="SemiBold" />
-                        <ItemsControl ItemsSource="{Binding TopRisks}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="models:RiskItem">
-                                    <StackPanel Spacing="2" Margin="0,0,0,8">
-                                        <SelectableTextBlock Text="{Binding LocationDisplay}" FontFamily="monospace" FontSize="11" Opacity="0.7" IsVisible="{Binding HasLocation}" />
-                                        <SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            <TextBlock Text="Top risks" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding TopRisks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:RiskItem">
+                                        <StackPanel Spacing="2" Margin="0,0,0,8">
+                                            <SelectableTextBlock Text="{Binding LocationDisplay}" FontFamily="monospace" FontSize="11" Opacity="0.7" IsVisible="{Binding HasLocation}" />
+                                            <SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <TextBlock Text="No assessment generated yet — click Generate Assessment below."
+                                   FontStyle="Italic" Opacity="0.7" TextWrapping="Wrap"
+                                   IsVisible="{Binding !HasAssessment}" />
 
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
                             <Button Content="Open in Browser" Command="{Binding OpenInBrowserCommand}" />
                             <Button Content="{Binding CopyLinkButtonLabel}" Command="{Binding CopyLinkCommand}" />
                             <Button Content="Mark Read/Unread" Command="{Binding ToggleReadCommand}" />
+                            <Button Content="Generate Assessment" Command="{Binding GenerateAssessmentCommand}"
+                                    IsEnabled="{Binding !IsGeneratingAssessment}" />
+                            <TextBlock Text="Generating…" VerticalAlignment="Center" Opacity="0.7"
+                                       IsVisible="{Binding IsGeneratingAssessment}" />
                         </StackPanel>
+
+                        <TextBlock Text="{Binding AssessmentErrorMessage}" Foreground="OrangeRed" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasAssessmentError}" />
                     </StackPanel>
                 </ScrollViewer>
 

@@ -22,55 +22,43 @@ public sealed class PrSyncOrchestrator(
 
         foreach (PullRequestSummary pullRequest in pullRequests)
         {
-            Briefing? existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequest.Number, cancellationToken);
-            if (existing is not null && existing.SourcePullRequestUpdatedAtUtc >= pullRequest.UpdatedAtUtc)
-                continue;
-
             try
             {
-                syncLog.Log(SyncLogLevel.Info, $"{repository.DisplayName} #{pullRequest.Number}: generating briefing");
+                Briefing? existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequest.Number, cancellationToken);
 
-                string diff = await pullRequestSource.GetDiffAsync(repository, pullRequest.Number, cancellationToken);
-                string prompt = promptBuilder.Build(repository, pullRequest, diff);
-                IAgentClient client = agentClientFactory.GetClient(settings.SelectedAgent);
-                AgentInvocationResult result = await client.GenerateBriefingAsync(prompt, cancellationToken);
+                Briefing record = existing is null
+                    ? new Briefing
+                    {
+                        RepositoryStorageKey = repository.StorageKey,
+                        RepositoryDisplayName = repository.DisplayName,
+                        PullRequestNumber = pullRequest.Number,
+                        Title = pullRequest.Title,
+                        Author = pullRequest.Author,
+                        Body = pullRequest.Body,
+                        PullRequestUrl = pullRequest.Url,
+                        CreatedAtUtc = pullRequest.CreatedAtUtc,
+                        UpdatedAtUtc = pullRequest.UpdatedAtUtc,
+                        IsDraft = pullRequest.IsDraft,
+                        ReviewRequested = pullRequest.ReviewRequested,
+                        ReviewDecision = pullRequest.ReviewDecision
+                    }
+                    : existing with
+                    {
+                        RepositoryDisplayName = repository.DisplayName,
+                        Title = pullRequest.Title,
+                        Author = pullRequest.Author,
+                        Body = pullRequest.Body,
+                        PullRequestUrl = pullRequest.Url,
+                        CreatedAtUtc = pullRequest.CreatedAtUtc,
+                        UpdatedAtUtc = pullRequest.UpdatedAtUtc,
+                        IsDraft = pullRequest.IsDraft,
+                        ReviewRequested = pullRequest.ReviewRequested,
+                        ReviewDecision = pullRequest.ReviewDecision
+                    };
 
-                if (!result.Succeeded)
-                {
-                    logger.LogWarning(
-                        "Agent invocation failed for {Repository} PR #{PullRequestNumber}: {Error}",
-                        repository.DisplayName, pullRequest.Number, result.ErrorOutput);
-                    syncLog.Log(SyncLogLevel.Warning,
-                        $"{repository.DisplayName} #{pullRequest.Number}: agent invocation failed — {result.ErrorOutput}");
-                    continue;
-                }
-
-                ParsedBriefingContent parsed = AgentResponseParser.Parse(result.RawOutput);
-                Briefing briefing = new Briefing
-                {
-                    RepositoryStorageKey = repository.StorageKey,
-                    RepositoryDisplayName = repository.DisplayName,
-                    PullRequestNumber = pullRequest.Number,
-                    Title = pullRequest.Title,
-                    Author = pullRequest.Author,
-                    PullRequestUrl = pullRequest.Url,
-                    Why = parsed.Why,
-                    HighImpactFiles = parsed.HighImpactFiles,
-                    TopRisks = parsed.TopRisks,
-                    GeneratedAtUtc = DateTimeOffset.UtcNow,
-                    SourcePullRequestUpdatedAtUtc = pullRequest.UpdatedAtUtc,
-                    GeneratedByAgent = settings.SelectedAgent,
-                    IsWellFormed = parsed.IsWellFormed,
-                    IsRead = false,
-                    CreatedAtUtc = pullRequest.CreatedAtUtc,
-                    IsDraft = pullRequest.IsDraft,
-                    ReviewRequested = pullRequest.ReviewRequested,
-                    ReviewDecision = pullRequest.ReviewDecision
-                };
-
-                await briefingRepository.SaveAsync(briefing, cancellationToken);
-                newOrUpdatedCount++;
-                syncLog.Log(SyncLogLevel.Info, $"{repository.DisplayName} #{pullRequest.Number}: briefing saved");
+                await briefingRepository.SaveAsync(record, cancellationToken);
+                if (existing is null)
+                    newOrUpdatedCount++;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -84,6 +72,77 @@ public sealed class PrSyncOrchestrator(
         await RemoveMergedBriefingsAsync(repository, pullRequests, cancellationToken);
 
         return newOrUpdatedCount;
+    }
+
+    public async Task<Briefing?> GenerateAssessmentAsync(
+        WatchedRepository repository, int pullRequestNumber, AgentType agent, CancellationToken cancellationToken)
+    {
+        Briefing? existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequestNumber, cancellationToken);
+        if (existing is null)
+        {
+            logger.LogWarning(
+                "No tracked PR record found for {Repository} PR #{PullRequestNumber}; cannot generate assessment",
+                repository.DisplayName, pullRequestNumber);
+            syncLog.Log(SyncLogLevel.Warning,
+                $"{repository.DisplayName} #{pullRequestNumber}: no tracked PR record found — sync first");
+            return null;
+        }
+
+        try
+        {
+            syncLog.Log(SyncLogLevel.Info, $"{repository.DisplayName} #{pullRequestNumber}: generating assessment");
+
+            string diff = await pullRequestSource.GetDiffAsync(repository, pullRequestNumber, cancellationToken);
+            PullRequestSummary pullRequest = new PullRequestSummary
+            {
+                Number = existing.PullRequestNumber,
+                Title = existing.Title,
+                Author = existing.Author,
+                Body = existing.Body,
+                Url = existing.PullRequestUrl,
+                UpdatedAtUtc = existing.UpdatedAtUtc,
+                CreatedAtUtc = existing.CreatedAtUtc,
+                IsDraft = existing.IsDraft,
+                ReviewRequested = existing.ReviewRequested,
+                ReviewDecision = existing.ReviewDecision
+            };
+            string prompt = promptBuilder.Build(repository, pullRequest, diff);
+            IAgentClient client = agentClientFactory.GetClient(agent);
+            AgentInvocationResult result = await client.GenerateBriefingAsync(prompt, cancellationToken);
+
+            if (!result.Succeeded)
+            {
+                logger.LogWarning(
+                    "Agent invocation failed for {Repository} PR #{PullRequestNumber}: {Error}",
+                    repository.DisplayName, pullRequestNumber, result.ErrorOutput);
+                syncLog.Log(SyncLogLevel.Warning,
+                    $"{repository.DisplayName} #{pullRequestNumber}: agent invocation failed — {result.ErrorOutput}");
+                return null;
+            }
+
+            ParsedBriefingContent parsed = AgentResponseParser.Parse(result.RawOutput);
+            Briefing updated = existing with
+            {
+                Why = parsed.Why,
+                HighImpactFiles = parsed.HighImpactFiles,
+                TopRisks = parsed.TopRisks,
+                GeneratedAtUtc = DateTimeOffset.UtcNow,
+                GeneratedByAgent = agent,
+                IsWellFormed = parsed.IsWellFormed
+            };
+
+            await briefingRepository.SaveAsync(updated, cancellationToken);
+            syncLog.Log(SyncLogLevel.Info, $"{repository.DisplayName} #{pullRequestNumber}: assessment saved");
+            return updated;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex,
+                "Failed to generate assessment for {Repository} PR #{PullRequestNumber}",
+                repository.DisplayName, pullRequestNumber);
+            syncLog.Log(SyncLogLevel.Error, $"{repository.DisplayName} #{pullRequestNumber}: assessment generation failed — {ex.Message}");
+            return null;
+        }
     }
 
     // PRs that fall out of the open list have either been merged or closed without merging.

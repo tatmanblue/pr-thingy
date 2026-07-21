@@ -24,12 +24,13 @@ public class FileBriefingRepositoryTests : IDisposable
         PullRequestNumber = number,
         Title = "Add feature",
         Author = "octocat",
+        Body = "description",
         PullRequestUrl = "https://example.com/pr/1",
+        UpdatedAtUtc = DateTimeOffset.UtcNow,
         Why = "adds a feature",
         HighImpactFiles = ["a.cs"],
         TopRisks = [new RiskItem { FilePath = "a.cs", Line = 10, Description = "risk" }],
         GeneratedAtUtc = DateTimeOffset.UtcNow,
-        SourcePullRequestUpdatedAtUtc = DateTimeOffset.UtcNow,
         GeneratedByAgent = AgentType.Claude,
         IsWellFormed = true
     };
@@ -169,5 +170,67 @@ public class FileBriefingRepositoryTests : IDisposable
         Assert.Equal("a legacy plain-string risk", risk.Description);
         Assert.Null(risk.FilePath);
         Assert.Null(risk.Line);
+    }
+
+    [Fact]
+    public async Task SaveAndGet_RoundTripsRecordWithNoAssessmentYet()
+    {
+        Briefing briefing = new Briefing
+        {
+            RepositoryStorageKey = "repo-abc12345",
+            RepositoryDisplayName = "repo",
+            PullRequestNumber = 1,
+            Title = "Add feature",
+            Author = "octocat",
+            Body = "description",
+            PullRequestUrl = "https://example.com/pr/1",
+            UpdatedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        await repository.SaveAsync(briefing, CancellationToken.None);
+        Briefing? loaded = await repository.GetAsync(briefing.RepositoryStorageKey, briefing.PullRequestNumber, CancellationToken.None);
+
+        Assert.NotNull(loaded);
+        Assert.Null(loaded.Why);
+        Assert.Null(loaded.GeneratedAtUtc);
+        Assert.Null(loaded.GeneratedByAgent);
+        Assert.Null(loaded.IsWellFormed);
+        Assert.Empty(loaded.HighImpactFiles);
+        Assert.Empty(loaded.TopRisks);
+    }
+
+    // Guards against a real regression: briefings persisted before Body/UpdatedAtUtc existed (and
+    // before SourcePullRequestUpdatedAtUtc was removed) must keep loading with safe defaults.
+    [Fact]
+    public async Task GetAsync_LegacyRecordMissingBodyAndUpdatedAt_LoadsWithoutThrowing()
+    {
+        const string legacyJson = """
+            {
+              "RepositoryStorageKey": "repo-abc12345",
+              "RepositoryDisplayName": "repo",
+              "PullRequestNumber": 1,
+              "Title": "Add feature",
+              "Author": "octocat",
+              "PullRequestUrl": "https://example.com/pr/1",
+              "Why": "adds a feature",
+              "HighImpactFiles": ["a.cs"],
+              "TopRisks": [],
+              "GeneratedAtUtc": "2026-07-16T20:58:05.015447+00:00",
+              "SourcePullRequestUpdatedAtUtc": "2026-07-16T20:56:05+00:00",
+              "GeneratedByAgent": 0,
+              "IsWellFormed": true,
+              "IsRead": false
+            }
+            """;
+
+        DirectoryInfo repositoryDirectory = Directory.CreateDirectory(Path.Combine(tempDirectory.Path, "repo-abc12345"));
+        await File.WriteAllTextAsync(Path.Combine(repositoryDirectory.FullName, "pr-1.json"), legacyJson);
+
+        Briefing? loaded = await repository.GetAsync("repo-abc12345", 1, CancellationToken.None);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(string.Empty, loaded.Body);
+        Assert.Equal(DateTimeOffset.MinValue, loaded.UpdatedAtUtc);
+        Assert.Equal("adds a feature", loaded.Why);
     }
 }

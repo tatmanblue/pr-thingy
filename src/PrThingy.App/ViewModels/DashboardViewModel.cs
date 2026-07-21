@@ -68,12 +68,13 @@ public partial class DashboardViewModel : ViewModelBase
             existingCard.PropertyChanged -= OnBriefingCardPropertyChanged;
         Briefings.Clear();
 
-        foreach (Briefing? briefing in all.OrderByDescending(b => b.GeneratedAtUtc))
+        foreach (Briefing? briefing in all.OrderByDescending(b => b.GeneratedAtUtc ?? b.CreatedAtUtc))
         {
             if (ShowUnreadOnly && briefing.IsRead)
                 continue;
 
-            BriefingCardViewModel card = new BriefingCardViewModel(briefing, briefingRepository, clipboardService);
+            BriefingCardViewModel card = new BriefingCardViewModel(
+                briefing, briefingRepository, clipboardService, repositoryStore, settingsStore, orchestrator);
             card.PropertyChanged += OnBriefingCardPropertyChanged;
             Briefings.Add(card);
         }
