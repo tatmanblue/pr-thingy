@@ -15,4 +15,10 @@ public sealed class AppSettings
     public AgentEffortLevel AgentEffort { get; set; } = AgentEffortLevel.Default;
 
     public int MaxDiffLengthChars { get; set; } = 60_000;
+
+    public bool ShowUnreadOnly { get; set; }
+
+    public double? WindowWidth { get; set; }
+
+    public double? WindowHeight { get; set; }
 }

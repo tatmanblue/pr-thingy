@@ -6,6 +6,8 @@ using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using PrThingy.App.ViewModels;
 using PrThingy.App.Views;
+using PrThingy.Core.Abstractions;
+using PrThingy.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -41,13 +43,31 @@ public partial class App : Application
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
 
+            IAppSettingsStore settingsStore = serviceProvider.GetRequiredService<IAppSettingsStore>();
+            AppSettings settings = settingsStore.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
             MainWindowViewModel mainWindowViewModel = serviceProvider.GetRequiredService<MainWindowViewModel>();
             MainWindow mainWindow = new MainWindow { DataContext = mainWindowViewModel };
+
+            if (settings.WindowWidth is double width && settings.WindowHeight is double height)
+            {
+                mainWindow.Width = width;
+                mainWindow.Height = height;
+            }
+
+            mainWindow.Closing += (_, _) =>
+            {
+                AppSettings current = settingsStore.LoadAsync(CancellationToken.None).GetAwaiter().GetResult();
+                current.WindowWidth = mainWindow.Width;
+                current.WindowHeight = mainWindow.Height;
+                settingsStore.SaveAsync(current, CancellationToken.None).GetAwaiter().GetResult();
+            };
 
             // Closing the main window quits the app (background sync included) — no tray/background
             // mode for now. See design.md's "Invisible Assistant" concept for the deferred alternative.
             desktop.MainWindow = mainWindow;
 
+            _ = RunFireAndForgetAsync(mainWindowViewModel.Dashboard.InitializeFromSettingsAsync(), serviceProvider);
             _ = RunFireAndForgetAsync(mainWindowViewModel.Dashboard.LoadCommand.ExecuteAsync(null), serviceProvider);
             _ = RunFireAndForgetAsync(mainWindowViewModel.CheckStartupEnvironmentCommand.ExecuteAsync(null), serviceProvider);
         }

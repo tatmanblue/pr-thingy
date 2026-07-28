@@ -57,7 +57,24 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     public partial string? SyncStatusMessage { get; set; }
 
-    partial void OnShowUnreadOnlyChanged(bool value) => _ = LoadAsync();
+    partial void OnShowUnreadOnlyChanged(bool value)
+    {
+        _ = LoadAsync();
+        _ = PersistShowUnreadOnlyAsync(value);
+    }
+
+    public async Task InitializeFromSettingsAsync()
+    {
+        AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
+        ShowUnreadOnly = settings.ShowUnreadOnly;
+    }
+
+    private async Task PersistShowUnreadOnlyAsync(bool value)
+    {
+        AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
+        settings.ShowUnreadOnly = value;
+        await settingsStore.SaveAsync(settings, CancellationToken.None);
+    }
 
     [RelayCommand]
     public async Task LoadAsync()
