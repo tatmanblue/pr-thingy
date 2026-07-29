@@ -9,7 +9,7 @@ internal static class AtomicFileWriter
             Directory.CreateDirectory(directory);
 
         string tempPath = path + ".tmp";
-        await File.WriteAllTextAsync(tempPath, content, cancellationToken);
+        await File.WriteAllTextAsync(tempPath, content, cancellationToken).ConfigureAwait(false);
         File.Move(tempPath, path, overwrite: true);
     }
 }

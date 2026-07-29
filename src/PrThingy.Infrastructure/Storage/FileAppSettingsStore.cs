@@ -14,10 +14,10 @@ public sealed class FileAppSettingsStore(string settingsFilePath) : IAppSettings
         if (!File.Exists(settingsFilePath))
             return new AppSettings();
 
-        await fileLock.WaitAsync(cancellationToken);
+        await fileLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            string json = await File.ReadAllTextAsync(settingsFilePath, cancellationToken);
+            string json = await File.ReadAllTextAsync(settingsFilePath, cancellationToken).ConfigureAwait(false);
             return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
         }
         finally
@@ -30,10 +30,10 @@ public sealed class FileAppSettingsStore(string settingsFilePath) : IAppSettings
     {
         string json = JsonSerializer.Serialize(settings, JsonOptions);
 
-        await fileLock.WaitAsync(cancellationToken);
+        await fileLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await AtomicFileWriter.WriteAsync(settingsFilePath, json, cancellationToken);
+            await AtomicFileWriter.WriteAsync(settingsFilePath, json, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
