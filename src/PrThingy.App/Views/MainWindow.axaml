@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PrThingy.App.ViewModels"
         xmlns:models="using:PrThingy.Core.Models"
+        xmlns:converters="using:PrThingy.App.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
@@ -74,50 +75,74 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <Panel Grid.Column="1">
+            <DockPanel Grid.Column="1">
+                <Border DockPanel.Dock="Top" Padding="12,6" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SystemBaseLowColor}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Left">
+                        <TextBlock Text="Text size" VerticalAlignment="Center" Opacity="0.7" />
+                        <Button Content="A-" Padding="8,2" Command="{Binding Dashboard.DecrementReviewPanelFontSizeCommand}" />
+                        <Button Content="A+" Padding="8,2" Command="{Binding Dashboard.IncrementReviewPanelFontSizeCommand}" />
+                        <Button Content="Reset" Padding="8,2" Command="{Binding Dashboard.ResetReviewPanelFontSizeCommand}" />
+                    </StackPanel>
+                </Border>
+
+                <Panel>
                 <ScrollViewer IsVisible="{Binding Dashboard.HasSelectedBriefing}">
                     <StackPanel Margin="20" Spacing="12" DataContext="{Binding Dashboard.SelectedBriefing}" x:DataType="vm:BriefingCardViewModel">
-                        <SelectableTextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap" />
+                        <SelectableTextBlock Text="{Binding Title}" FontWeight="Bold" TextWrapping="Wrap"
+                                             FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=7}" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Border Background="#3355AAFF" CornerRadius="4" Padding="6,2">
-                                <TextBlock Text="{Binding RepositoryDisplayName}" FontSize="12" FontWeight="Medium" />
+                                <TextBlock Text="{Binding RepositoryDisplayName}" FontWeight="Medium"
+                                           FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=-1}" />
                             </Border>
-                            <TextBlock Opacity="0.7" VerticalAlignment="Center">
+                            <TextBlock Opacity="0.7" VerticalAlignment="Center"
+                                       FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}">
                                 <Run Text="#" /><Run Text="{Binding PullRequestNumber}" /><Run Text=" by " /><Run Text="{Binding Author}" />
                             </TextBlock>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Border Background="{Binding AgeBrush}" CornerRadius="4" Padding="6,2">
-                                <TextBlock Text="{Binding AgeLabel}" FontSize="12" FontWeight="Medium" />
+                                <TextBlock Text="{Binding AgeLabel}" FontWeight="Medium"
+                                           FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=-1}" />
                             </Border>
                             <Border Background="{Binding ReviewStatusBrush}" CornerRadius="4" Padding="6,2">
-                                <TextBlock Text="{Binding ReviewStatusLabel}" FontSize="12" FontWeight="Medium" />
+                                <TextBlock Text="{Binding ReviewStatusLabel}" FontWeight="Medium"
+                                           FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=-1}" />
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="{Binding GeneratedAtDisplay}" Opacity="0.6" FontSize="12" />
+                        <TextBlock Text="{Binding GeneratedAtDisplay}" Opacity="0.6"
+                                   FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=-1}" />
 
-                        <TextBlock Text="Not structured — showing raw agent output" Foreground="OrangeRed" IsVisible="{Binding IsNotWellFormed}" />
+                        <TextBlock Text="Not structured — showing raw agent output" Foreground="OrangeRed" IsVisible="{Binding IsNotWellFormed}"
+                                   FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
 
                         <StackPanel Spacing="12" IsVisible="{Binding HasAssessment}">
-                            <TextBlock Text="Why" FontWeight="SemiBold" />
-                            <SelectableTextBlock Text="{Binding Why}" TextWrapping="Wrap" />
+                            <TextBlock Text="Why" FontWeight="SemiBold"
+                                       FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
+                            <SelectableTextBlock Text="{Binding Why}" TextWrapping="Wrap"
+                                                 FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
 
-                            <TextBlock Text="High-impact files" FontWeight="SemiBold" />
+                            <TextBlock Text="High-impact files" FontWeight="SemiBold"
+                                       FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                             <ItemsControl ItemsSource="{Binding HighImpactFiles}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <SelectableTextBlock Text="{Binding}" FontFamily="monospace" />
+                                        <SelectableTextBlock Text="{Binding}" FontFamily="monospace"
+                                                             FontSize="{Binding $parent[ItemsControl].DataContext.ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <TextBlock Text="Top risks" FontWeight="SemiBold" />
+                            <TextBlock Text="Top risks" FontWeight="SemiBold"
+                                       FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                             <ItemsControl ItemsSource="{Binding TopRisks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:RiskItem">
                                         <StackPanel Spacing="2" Margin="0,0,0,8">
-                                            <SelectableTextBlock Text="{Binding LocationDisplay}" FontFamily="monospace" FontSize="11" Opacity="0.7" IsVisible="{Binding HasLocation}" />
-                                            <SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap" />
+                                            <SelectableTextBlock Text="{Binding LocationDisplay}" FontFamily="monospace" Opacity="0.7" IsVisible="{Binding HasLocation}"
+                                                                 FontSize="{Binding $parent[ItemsControl].((vm:BriefingCardViewModel)DataContext).ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=-2}" />
+                                            <SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                                                 FontSize="{Binding $parent[ItemsControl].((vm:BriefingCardViewModel)DataContext).ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -126,27 +151,35 @@
 
                         <TextBlock Text="No assessment generated yet — click Generate Assessment below."
                                    FontStyle="Italic" Opacity="0.7" TextWrapping="Wrap"
-                                   IsVisible="{Binding !HasAssessment}" />
+                                   IsVisible="{Binding !HasAssessment}"
+                                   FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
 
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-                            <Button Content="Open in Browser" Command="{Binding OpenInBrowserCommand}" />
-                            <Button Content="{Binding CopyLinkButtonLabel}" Command="{Binding CopyLinkCommand}" />
-                            <Button Content="Mark Read/Unread" Command="{Binding ToggleReadCommand}" />
+                            <Button Content="Open in Browser" Command="{Binding OpenInBrowserCommand}"
+                                    FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
+                            <Button Content="{Binding CopyLinkButtonLabel}" Command="{Binding CopyLinkCommand}"
+                                    FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
+                            <Button Content="Mark Read/Unread" Command="{Binding ToggleReadCommand}"
+                                    FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                             <Button Content="Generate Assessment" Command="{Binding GenerateAssessmentCommand}"
-                                    IsEnabled="{Binding !IsGeneratingAssessment}" />
+                                    IsEnabled="{Binding !IsGeneratingAssessment}"
+                                    FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                             <TextBlock Text="Generating…" VerticalAlignment="Center" Opacity="0.7"
-                                       IsVisible="{Binding IsGeneratingAssessment}" />
+                                       IsVisible="{Binding IsGeneratingAssessment}"
+                                       FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                         </StackPanel>
 
                         <TextBlock Text="{Binding AssessmentErrorMessage}" Foreground="OrangeRed" TextWrapping="Wrap"
-                                   IsVisible="{Binding HasAssessmentError}" />
+                                   IsVisible="{Binding HasAssessmentError}"
+                                   FontSize="{Binding ReviewPanelFontSize, Converter={x:Static converters:FontSizeOffsetConverter.Instance}, ConverterParameter=0}" />
                     </StackPanel>
                 </ScrollViewer>
 
                 <TextBlock Text="Select a briefing to see details"
                            IsVisible="{Binding !Dashboard.HasSelectedBriefing}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6" />
-            </Panel>
+                </Panel>
+            </DockPanel>
         </Grid>
         </TabItem>
 

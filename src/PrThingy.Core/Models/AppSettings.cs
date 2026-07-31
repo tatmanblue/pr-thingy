@@ -21,4 +21,8 @@ public sealed class AppSettings
     public double? WindowWidth { get; set; }
 
     public double? WindowHeight { get; set; }
+
+    public const double REVIEW_PANEL_FONT_SIZE_DEFAULT = 13;
+
+    public double ReviewPanelFontSize { get; set; } = REVIEW_PANEL_FONT_SIZE_DEFAULT;
 }

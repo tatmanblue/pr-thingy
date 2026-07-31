@@ -130,17 +130,16 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveAsync()
     {
-        await settingsStore.SaveAsync(new AppSettings
-        {
-            SelectedAgent = SelectedAgent,
-            PollingIntervalMinutes = PollingIntervalMinutes,
-            MaxPullRequestsPerRepository = MaxPullRequestsPerRepository,
-            AgentModel = AgentModel,
-            AgentEffort = AgentEffort,
-            MaxDiffLengthChars = MaxDiffLengthChars,
-            RunScanOnSettingsClose = RunScanOnClose,
-            SyncOnStartup = SyncOnStartup
-        }, CancellationToken.None);
+        AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
+        settings.SelectedAgent = SelectedAgent;
+        settings.PollingIntervalMinutes = PollingIntervalMinutes;
+        settings.MaxPullRequestsPerRepository = MaxPullRequestsPerRepository;
+        settings.AgentModel = AgentModel;
+        settings.AgentEffort = AgentEffort;
+        settings.MaxDiffLengthChars = MaxDiffLengthChars;
+        settings.RunScanOnSettingsClose = RunScanOnClose;
+        settings.SyncOnStartup = SyncOnStartup;
+        await settingsStore.SaveAsync(settings, CancellationToken.None);
 
         HashSet<string> currentIds = Repositories.Select(r => r.Id).ToHashSet();
 

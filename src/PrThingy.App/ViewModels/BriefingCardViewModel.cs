@@ -112,6 +112,9 @@ public partial class BriefingCardViewModel : ViewModelBase
     public partial bool IsRead { get; set; }
 
     [ObservableProperty]
+    public partial double ReviewPanelFontSize { get; set; } = AppSettings.REVIEW_PANEL_FONT_SIZE_DEFAULT;
+
+    [ObservableProperty]
     public partial string CopyLinkButtonLabel { get; set; } = COPY_LINK_LABEL;
 
     [RelayCommand]

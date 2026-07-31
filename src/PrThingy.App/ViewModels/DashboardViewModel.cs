@@ -12,6 +12,9 @@ namespace PrThingy.App.ViewModels;
 
 public partial class DashboardViewModel : ViewModelBase
 {
+    private const double REVIEW_PANEL_FONT_SIZE_MIN = 8;
+    private const double REVIEW_PANEL_FONT_SIZE_MAX = 32;
+
     private readonly IBriefingRepository briefingRepository;
     private readonly IWatchedRepositoryStore repositoryStore;
     private readonly IAppSettingsStore settingsStore;
@@ -52,6 +55,9 @@ public partial class DashboardViewModel : ViewModelBase
     public partial bool ShowUnreadOnly { get; set; }
 
     [ObservableProperty]
+    public partial double ReviewPanelFontSize { get; set; } = AppSettings.REVIEW_PANEL_FONT_SIZE_DEFAULT;
+
+    [ObservableProperty]
     public partial bool IsSyncing { get; set; }
 
     [ObservableProperty]
@@ -63,10 +69,19 @@ public partial class DashboardViewModel : ViewModelBase
         _ = PersistShowUnreadOnlyAsync(value);
     }
 
+    partial void OnReviewPanelFontSizeChanged(double value)
+    {
+        foreach (BriefingCardViewModel card in Briefings)
+            card.ReviewPanelFontSize = value;
+
+        _ = PersistReviewPanelFontSizeAsync(value);
+    }
+
     public async Task InitializeFromSettingsAsync()
     {
         AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
         ShowUnreadOnly = settings.ShowUnreadOnly;
+        ReviewPanelFontSize = settings.ReviewPanelFontSize;
     }
 
     private async Task PersistShowUnreadOnlyAsync(bool value)
@@ -75,6 +90,25 @@ public partial class DashboardViewModel : ViewModelBase
         settings.ShowUnreadOnly = value;
         await settingsStore.SaveAsync(settings, CancellationToken.None);
     }
+
+    private async Task PersistReviewPanelFontSizeAsync(double value)
+    {
+        AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
+        settings.ReviewPanelFontSize = value;
+        await settingsStore.SaveAsync(settings, CancellationToken.None);
+    }
+
+    [RelayCommand]
+    private void IncrementReviewPanelFontSize() =>
+        ReviewPanelFontSize = Math.Min(REVIEW_PANEL_FONT_SIZE_MAX, ReviewPanelFontSize + 1);
+
+    [RelayCommand]
+    private void DecrementReviewPanelFontSize() =>
+        ReviewPanelFontSize = Math.Max(REVIEW_PANEL_FONT_SIZE_MIN, ReviewPanelFontSize - 1);
+
+    [RelayCommand]
+    private void ResetReviewPanelFontSize() =>
+        ReviewPanelFontSize = AppSettings.REVIEW_PANEL_FONT_SIZE_DEFAULT;
 
     [RelayCommand]
     public async Task LoadAsync()
@@ -92,6 +126,7 @@ public partial class DashboardViewModel : ViewModelBase
 
             BriefingCardViewModel card = new BriefingCardViewModel(
                 briefing, briefingRepository, clipboardService, repositoryStore, settingsStore, orchestrator);
+            card.ReviewPanelFontSize = ReviewPanelFontSize;
             card.PropertyChanged += OnBriefingCardPropertyChanged;
             Briefings.Add(card);
         }
