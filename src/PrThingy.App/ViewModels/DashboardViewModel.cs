@@ -23,6 +23,12 @@ public partial class DashboardViewModel : ViewModelBase
     private readonly IClipboardService clipboardService;
     private bool syncNowInFlight;
 
+    // Master set of all cards for the current load, independent of the current
+    // ShowUnreadOnly / SearchText filter. Briefings is always a filtered, order-
+    // preserving projection of this list — never rebuilt from the repository on
+    // every filter change.
+    private readonly List<BriefingCardViewModel> allCards = [];
+
     public DashboardViewModel(
         IBriefingRepository briefingRepository,
         IWatchedRepositoryStore repositoryStore,
@@ -55,6 +61,9 @@ public partial class DashboardViewModel : ViewModelBase
     public partial bool ShowUnreadOnly { get; set; }
 
     [ObservableProperty]
+    public partial string? SearchText { get; set; }
+
+    [ObservableProperty]
     public partial double ReviewPanelFontSize { get; set; } = AppSettings.REVIEW_PANEL_FONT_SIZE_DEFAULT;
 
     [ObservableProperty]
@@ -65,9 +74,11 @@ public partial class DashboardViewModel : ViewModelBase
 
     partial void OnShowUnreadOnlyChanged(bool value)
     {
-        _ = LoadAsync();
+        ApplyFilter();
         _ = PersistShowUnreadOnlyAsync(value);
     }
+
+    partial void OnSearchTextChanged(string? value) => ApplyFilter();
 
     partial void OnReviewPanelFontSizeChanged(double value)
     {
@@ -115,38 +126,73 @@ public partial class DashboardViewModel : ViewModelBase
     {
         IReadOnlyList<Briefing> all = await briefingRepository.GetAllAsync(CancellationToken.None);
 
-        foreach (BriefingCardViewModel existingCard in Briefings)
+        foreach (BriefingCardViewModel existingCard in allCards)
             existingCard.PropertyChanged -= OnBriefingCardPropertyChanged;
-        Briefings.Clear();
+        allCards.Clear();
 
-        foreach (Briefing? briefing in all.OrderByDescending(b => b.GeneratedAtUtc ?? b.CreatedAtUtc))
+        foreach (Briefing briefing in all.OrderByDescending(b => b.GeneratedAtUtc ?? b.CreatedAtUtc))
         {
-            if (ShowUnreadOnly && briefing.IsRead)
-                continue;
-
             BriefingCardViewModel card = new BriefingCardViewModel(
                 briefing, briefingRepository, clipboardService, repositoryStore, settingsStore, orchestrator);
             card.ReviewPanelFontSize = ReviewPanelFontSize;
             card.PropertyChanged += OnBriefingCardPropertyChanged;
-            Briefings.Add(card);
+            allCards.Add(card);
         }
+
+        ApplyFilter();
     }
 
-    // While "unread only" is active, a card marked read should disappear immediately rather
-    // than waiting for the next full reload.
+    private bool MatchesFilter(BriefingCardViewModel card)
+    {
+        if (ShowUnreadOnly && card.IsRead)
+            return false;
+
+        string? search = SearchText?.Trim();
+        if (!string.IsNullOrEmpty(search) &&
+            card.Title.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
+            return false;
+
+        return true;
+    }
+
+    // Reconciles Briefings to match allCards.Where(MatchesFilter) in place, preserving object
+    // identity and order so unaffected cards never flicker and SelectedBriefing stays valid
+    // across filter changes when the selected card still matches.
+    private void ApplyFilter()
+    {
+        for (int i = Briefings.Count - 1; i >= 0; i--)
+        {
+            if (!MatchesFilter(Briefings[i]))
+                Briefings.RemoveAt(i);
+        }
+
+        int insertIndex = 0;
+        foreach (BriefingCardViewModel card in allCards)
+        {
+            if (!MatchesFilter(card))
+                continue;
+
+            if (insertIndex < Briefings.Count && ReferenceEquals(Briefings[insertIndex], card))
+            {
+                insertIndex++;
+                continue;
+            }
+
+            Briefings.Insert(insertIndex, card);
+            insertIndex++;
+        }
+
+        if (SelectedBriefing is not null && !MatchesFilter(SelectedBriefing))
+            SelectedBriefing = null;
+    }
+
+    // A card's IsRead flipping (via its own ToggleReadCommand) can change whether it belongs
+    // in the current filtered view; re-run the same predicate used everywhere else instead of
+    // special-casing it here.
     private void OnBriefingCardPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(BriefingCardViewModel.IsRead))
-            return;
-
-        if (sender is not BriefingCardViewModel { IsRead: true } card || !ShowUnreadOnly)
-            return;
-
-        if (SelectedBriefing == card)
-            SelectedBriefing = null;
-
-        card.PropertyChanged -= OnBriefingCardPropertyChanged;
-        Briefings.Remove(card);
+        if (e.PropertyName == nameof(BriefingCardViewModel.IsRead))
+            ApplyFilter();
     }
 
     [RelayCommand]
