@@ -199,6 +199,56 @@ public class FileBriefingRepositoryTests : IDisposable
         Assert.Empty(loaded.TopRisks);
     }
 
+    [Fact]
+    public async Task DeleteAllForRepositoryAsync_RemovesDirectorySoBriefingsNoLongerLoad()
+    {
+        await repository.SaveAsync(SampleBriefing("repo-a-11111111", 1), CancellationToken.None);
+        await repository.SaveAsync(SampleBriefing("repo-b-22222222", 2), CancellationToken.None);
+
+        await repository.DeleteAllForRepositoryAsync("repo-a-11111111", CancellationToken.None);
+
+        IReadOnlyList<Briefing> all = await repository.GetAllAsync(CancellationToken.None);
+        Briefing remaining = Assert.Single(all);
+        Assert.Equal("repo-b-22222222", remaining.RepositoryStorageKey);
+    }
+
+    [Fact]
+    public async Task DeleteAllForRepositoryAsync_UnknownRepository_DoesNotThrow()
+    {
+        await repository.DeleteAllForRepositoryAsync("no-such-repo", CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task DeleteOrphanedRepositoriesAsync_RemovesDirectoriesNotInActiveSet()
+    {
+        await repository.SaveAsync(SampleBriefing("repo-a-11111111", 1), CancellationToken.None);
+        await repository.SaveAsync(SampleBriefing("repo-b-22222222", 2), CancellationToken.None);
+
+        await repository.DeleteOrphanedRepositoriesAsync(["repo-a-11111111"], CancellationToken.None);
+
+        IReadOnlyList<Briefing> all = await repository.GetAllAsync(CancellationToken.None);
+        Briefing remaining = Assert.Single(all);
+        Assert.Equal("repo-a-11111111", remaining.RepositoryStorageKey);
+    }
+
+    [Fact]
+    public async Task DeleteOrphanedRepositoriesAsync_AllRepositoriesActive_KeepsEverything()
+    {
+        await repository.SaveAsync(SampleBriefing("repo-a-11111111", 1), CancellationToken.None);
+        await repository.SaveAsync(SampleBriefing("repo-b-22222222", 2), CancellationToken.None);
+
+        await repository.DeleteOrphanedRepositoriesAsync(["repo-a-11111111", "repo-b-22222222"], CancellationToken.None);
+
+        IReadOnlyList<Briefing> all = await repository.GetAllAsync(CancellationToken.None);
+        Assert.Equal(2, all.Count);
+    }
+
+    [Fact]
+    public async Task DeleteOrphanedRepositoriesAsync_NoBriefingsDirectory_DoesNotThrow()
+    {
+        await repository.DeleteOrphanedRepositoriesAsync(["repo-a-11111111"], CancellationToken.None);
+    }
+
     // Guards against a real regression: briefings persisted before Body/UpdatedAtUtc existed (and
     // before SourcePullRequestUpdatedAtUtc was removed) must keep loading with safe defaults.
     [Fact]

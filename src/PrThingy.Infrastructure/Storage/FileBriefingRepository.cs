@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Linq;
 using PrThingy.Core.Abstractions;
 using PrThingy.Core.Models;
 
@@ -88,6 +89,31 @@ public sealed class FileBriefingRepository(string briefingsDirectory) : IBriefin
         string path = BriefingFilePath(repositoryStorageKey, pullRequestNumber);
         if (File.Exists(path))
             File.Delete(path);
+
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAllForRepositoryAsync(string repositoryStorageKey, CancellationToken cancellationToken)
+    {
+        string repositoryDirectory = Path.Combine(briefingsDirectory, repositoryStorageKey);
+        if (Directory.Exists(repositoryDirectory))
+            Directory.Delete(repositoryDirectory, recursive: true);
+
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteOrphanedRepositoriesAsync(IReadOnlyCollection<string> activeStorageKeys, CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(briefingsDirectory))
+            return Task.CompletedTask;
+
+        HashSet<string> active = activeStorageKeys.ToHashSet(StringComparer.Ordinal);
+        foreach (string repositoryDirectory in Directory.EnumerateDirectories(briefingsDirectory))
+        {
+            string storageKey = Path.GetFileName(repositoryDirectory);
+            if (!active.Contains(storageKey))
+                Directory.Delete(repositoryDirectory, recursive: true);
+        }
 
         return Task.CompletedTask;
     }

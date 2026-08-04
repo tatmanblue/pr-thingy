@@ -90,4 +90,88 @@ public class DashboardViewModelTests
             Times.Once);
         Assert.False(syncLog.IsSyncing);
     }
+
+    private static Briefing SampleBriefing(string repositoryStorageKey, int number, bool isRead, DateTimeOffset updatedAtUtc) => new()
+    {
+        RepositoryStorageKey = repositoryStorageKey,
+        RepositoryDisplayName = "repo",
+        PullRequestNumber = number,
+        Title = "Add feature",
+        Author = "octocat",
+        PullRequestUrl = "https://example.com/pr/1",
+        UpdatedAtUtc = updatedAtUtc,
+        IsRead = isRead
+    };
+
+    [Fact]
+    public async Task LoadAsync_DuplicateBriefingsForSamePullRequestUrl_CollapsesToOneReadCard()
+    {
+        // Same real PR synced under two different WatchedRepository StorageKeys — the scenario
+        // that produces visible duplicate cards when a repo was watched twice.
+        Briefing older = SampleBriefing("repo-a-11111111", 1, isRead: false, updatedAtUtc: DateTimeOffset.UtcNow.AddMinutes(-5));
+        Briefing newer = SampleBriefing("repo-b-22222222", 1, isRead: true, updatedAtUtc: DateTimeOffset.UtcNow);
+
+        Mock<IWatchedRepositoryStore> repositoryStore = new Mock<IWatchedRepositoryStore>();
+        repositoryStore
+            .Setup(s => s.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Repository("repo-a"), Repository("repo-b")]);
+
+        DashboardViewModel viewModel = BuildViewModel(
+            new Mock<IPullRequestSource>(), repositoryStore, new SyncLogService(), out Mock<IBriefingRepository> briefingRepository);
+        briefingRepository
+            .Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([older, newer]);
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        BriefingCardViewModel card = Assert.Single(viewModel.Briefings);
+        Assert.True(card.IsRead);
+    }
+
+    [Fact]
+    public async Task LoadAsync_OrphanedBriefingDirectory_IsSweptUsingCurrentlyWatchedStorageKeys()
+    {
+        WatchedRepository watched = Repository("still-watched");
+
+        Mock<IWatchedRepositoryStore> repositoryStore = new Mock<IWatchedRepositoryStore>();
+        repositoryStore
+            .Setup(s => s.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([watched]);
+
+        DashboardViewModel viewModel = BuildViewModel(
+            new Mock<IPullRequestSource>(), repositoryStore, new SyncLogService(), out Mock<IBriefingRepository> briefingRepository);
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        briefingRepository.Verify(
+            r => r.DeleteOrphanedRepositoriesAsync(
+                It.Is<IReadOnlyCollection<string>>(keys => keys.Count == 1 && keys.Contains(watched.StorageKey)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task LoadAsync_CalledTwiceForSameData_DoesNotLeaveStaleDuplicateCard()
+    {
+        // Reproduces real startup behavior: App.axaml.cs fires an initial LoadCommand call, and
+        // PrPollingBackgroundService's startup sync finishing triggers a second LoadAsync shortly
+        // after via OnSyncLogSyncingChanged — both against the same underlying data.
+        Briefing briefing = SampleBriefing("repo-a-11111111", 1, isRead: false, updatedAtUtc: DateTimeOffset.UtcNow);
+
+        Mock<IWatchedRepositoryStore> repositoryStore = new Mock<IWatchedRepositoryStore>();
+        repositoryStore
+            .Setup(s => s.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Repository("repo-a")]);
+
+        DashboardViewModel viewModel = BuildViewModel(
+            new Mock<IPullRequestSource>(), repositoryStore, new SyncLogService(), out Mock<IBriefingRepository> briefingRepository);
+        briefingRepository
+            .Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([briefing]);
+
+        await viewModel.LoadCommand.ExecuteAsync(null);
+        await viewModel.LoadCommand.ExecuteAsync(null);
+
+        Assert.Single(viewModel.Briefings);
+    }
 }

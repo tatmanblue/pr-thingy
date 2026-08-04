@@ -124,13 +124,35 @@ public partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     public async Task LoadAsync()
     {
+        IReadOnlyList<WatchedRepository> watchedRepositories = await repositoryStore.GetAllAsync(CancellationToken.None);
+
+        // Self-heals briefing folders left behind by a repo that was removed and re-added
+        // (or removed before DeleteAllForRepositoryAsync existed) under a different StorageKey.
+        await briefingRepository.DeleteOrphanedRepositoriesAsync(
+            watchedRepositories.Select(r => r.StorageKey).ToList(), CancellationToken.None);
+
         IReadOnlyList<Briefing> all = await briefingRepository.GetAllAsync(CancellationToken.None);
+
+        // Defensive: collapse any Briefing records that share a PullRequestUrl (e.g. the same
+        // real PR synced under two different WatchedRepository StorageKeys) into one, so the
+        // list can never show a duplicate card and "mark read" can never appear to fail because
+        // a sibling record was still unread.
+        List<Briefing> deduplicated = all
+            .GroupBy(b => b.PullRequestUrl)
+            .Select(group =>
+            {
+                Briefing representative = group.OrderByDescending(b => b.UpdatedAtUtc).First();
+                if (group.Any(b => b.IsRead))
+                    representative.IsRead = true;
+                return representative;
+            })
+            .ToList();
 
         foreach (BriefingCardViewModel existingCard in allCards)
             existingCard.PropertyChanged -= OnBriefingCardPropertyChanged;
         allCards.Clear();
 
-        foreach (Briefing briefing in all.OrderByDescending(b => b.GeneratedAtUtc ?? b.CreatedAtUtc))
+        foreach (Briefing briefing in deduplicated.OrderByDescending(b => b.GeneratedAtUtc ?? b.CreatedAtUtc))
         {
             BriefingCardViewModel card = new BriefingCardViewModel(
                 briefing, briefingRepository, clipboardService, repositoryStore, settingsStore, orchestrator);
@@ -160,9 +182,17 @@ public partial class DashboardViewModel : ViewModelBase
     // across filter changes when the selected card still matches.
     private void ApplyFilter()
     {
+        // LoadAsync always rebuilds allCards with new card instances rather than updating existing
+        // ones, and can run more than once per session (e.g. the initial load and the load that
+        // follows startup sync). Without this membership check, a card left over from a prior
+        // allCards generation still passes MatchesFilter and is never removed, so it lingers in
+        // Briefings alongside the new card for the same PR — a visible duplicate that "mark read"
+        // can't clear because it only updates the card instance the user actually clicked.
+        HashSet<BriefingCardViewModel> currentCards = allCards.ToHashSet();
+
         for (int i = Briefings.Count - 1; i >= 0; i--)
         {
-            if (!MatchesFilter(Briefings[i]))
+            if (!currentCards.Contains(Briefings[i]) || !MatchesFilter(Briefings[i]))
                 Briefings.RemoveAt(i);
         }
 

@@ -10,23 +10,27 @@ namespace PrThingy.App.ViewModels;
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly IWatchedRepositoryStore repositoryStore;
+    private readonly IBriefingRepository briefingRepository;
     private readonly IAppSettingsStore settingsStore;
     private readonly IFolderPickerService folderPickerService;
     private readonly DashboardViewModel dashboard;
 
     // Snapshot of what's actually persisted, taken at LoadAsync. Used to diff against
     // Repositories at Save time, and to decide Cancel's post-close scan without honoring
-    // any unsaved edits (including the RunScanOnClose checkbox itself).
-    private readonly HashSet<string> originalRepositoryIds = [];
+    // any unsaved edits (including the RunScanOnClose checkbox itself). Keyed by Id, valued
+    // by StorageKey so a removed repo's briefing files can be found and deleted at Save time.
+    private readonly Dictionary<string, string> originalRepositoryStorageKeysById = [];
     private bool originalRunScanOnClose;
 
     public SettingsViewModel(
         IWatchedRepositoryStore repositoryStore,
+        IBriefingRepository briefingRepository,
         IAppSettingsStore settingsStore,
         IFolderPickerService folderPickerService,
         DashboardViewModel dashboard)
     {
         this.repositoryStore = repositoryStore;
+        this.briefingRepository = briefingRepository;
         this.settingsStore = settingsStore;
         this.folderPickerService = folderPickerService;
         this.dashboard = dashboard;
@@ -93,11 +97,11 @@ public partial class SettingsViewModel : ViewModelBase
         StatusMessage = null;
 
         Repositories.Clear();
-        originalRepositoryIds.Clear();
+        originalRepositoryStorageKeysById.Clear();
         foreach (WatchedRepository repository in await repositoryStore.GetAllAsync(CancellationToken.None))
         {
             Repositories.Add(new WatchedRepositoryRowViewModel(repository));
-            originalRepositoryIds.Add(repository.Id);
+            originalRepositoryStorageKeysById[repository.Id] = repository.StorageKey;
         }
     }
 
@@ -108,7 +112,19 @@ public partial class SettingsViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(folder))
             return;
 
-        string displayName = Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        string normalizedFolder = folder.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        bool alreadyWatched = Repositories.Any(row =>
+            string.Equals(
+                row.LocalPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                normalizedFolder,
+                StringComparison.OrdinalIgnoreCase));
+        if (alreadyWatched)
+        {
+            StatusMessage = "That folder is already being watched.";
+            return;
+        }
+
+        string displayName = Path.GetFileName(normalizedFolder);
         WatchedRepository repository = WatchedRepository.Create(displayName, folder);
 
         // Staged only — not persisted until Save/SaveAndClose, so Cancel can discard it.
@@ -143,20 +159,23 @@ public partial class SettingsViewModel : ViewModelBase
 
         HashSet<string> currentIds = Repositories.Select(r => r.Id).ToHashSet();
 
-        foreach (string? removedId in originalRepositoryIds.Except(currentIds))
+        foreach (string removedId in originalRepositoryStorageKeysById.Keys.Except(currentIds).ToList())
+        {
             await repositoryStore.RemoveAsync(removedId, CancellationToken.None);
+            await briefingRepository.DeleteAllForRepositoryAsync(originalRepositoryStorageKeysById[removedId], CancellationToken.None);
+        }
 
         foreach (WatchedRepositoryRowViewModel row in Repositories)
         {
-            if (originalRepositoryIds.Contains(row.Id))
+            if (originalRepositoryStorageKeysById.ContainsKey(row.Id))
                 await repositoryStore.UpdateAsync(row.ToModel(), CancellationToken.None);
             else
                 await repositoryStore.AddAsync(row.ToModel(), CancellationToken.None);
         }
 
-        originalRepositoryIds.Clear();
-        foreach (string? id in currentIds)
-            originalRepositoryIds.Add(id);
+        originalRepositoryStorageKeysById.Clear();
+        foreach (WatchedRepositoryRowViewModel row in Repositories)
+            originalRepositoryStorageKeysById[row.Id] = row.StorageKey;
         originalRunScanOnClose = RunScanOnClose;
 
         StatusMessage = "Saved";
