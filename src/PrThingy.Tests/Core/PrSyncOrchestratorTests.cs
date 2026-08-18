@@ -391,12 +391,13 @@ public class PrSyncOrchestratorTests
 
         PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        Briefing? result = await orchestrator.GenerateAssessmentAsync(repository, 1, DefaultSettings(), CancellationToken.None);
+        AssessmentGenerationResult result = await orchestrator.GenerateAssessmentAsync(repository, 1, DefaultSettings(), CancellationToken.None);
 
-        Assert.NotNull(result);
-        Assert.Equal("ok", result!.Why);
-        Assert.NotNull(result.GeneratedAtUtc);
-        Assert.Equal(AgentType.Claude, result.GeneratedByAgent);
+        Assert.NotNull(result.Briefing);
+        Assert.Equal("ok", result.Briefing!.Why);
+        Assert.NotNull(result.Briefing.GeneratedAtUtc);
+        Assert.Equal(AgentType.Claude, result.Briefing.GeneratedByAgent);
+        Assert.Null(result.ErrorMessage);
         briefingRepository.Verify(r => r.SaveAsync(It.Is<Briefing>(b => b.Why == "ok"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -486,9 +487,10 @@ public class PrSyncOrchestratorTests
 
         PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        Briefing? result = await orchestrator.GenerateAssessmentAsync(repository, 1, DefaultSettings(), CancellationToken.None);
+        AssessmentGenerationResult result = await orchestrator.GenerateAssessmentAsync(repository, 1, DefaultSettings(), CancellationToken.None);
 
-        Assert.Null(result);
+        Assert.Null(result.Briefing);
+        Assert.NotNull(result.ErrorMessage);
         agentClientFactory.Verify(f => f.GetClient(It.IsAny<AgentType>()), Times.Never);
         briefingRepository.Verify(r => r.SaveAsync(It.IsAny<Briefing>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -516,9 +518,43 @@ public class PrSyncOrchestratorTests
 
         PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
 
-        Briefing? result = await orchestrator.GenerateAssessmentAsync(repository, 1, DefaultSettings(), CancellationToken.None);
+        AssessmentGenerationResult result = await orchestrator.GenerateAssessmentAsync(repository, 1, DefaultSettings(), CancellationToken.None);
 
-        Assert.Null(result);
+        Assert.Null(result.Briefing);
+        Assert.Contains("CLI not found", result.ErrorMessage);
+        briefingRepository.Verify(r => r.SaveAsync(It.IsAny<Briefing>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GenerateAssessmentAsync_AgentInvocationFailsDueToExpiredAuth_ReturnsAuthSpecificErrorMessage()
+    {
+        WatchedRepository repository = Repository();
+        Briefing existing = ExistingBriefing(repository, 1, withAssessment: true);
+
+        Mock<IPullRequestSource> pullRequestSource = new Mock<IPullRequestSource>();
+        pullRequestSource.Setup(s => s.GetDiffAsync(repository, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("diff");
+
+        Mock<IBriefingRepository> briefingRepository = new Mock<IBriefingRepository>();
+        briefingRepository.Setup(r => r.GetAsync(repository.StorageKey, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        Mock<IAgentClient> agentClient = new Mock<IAgentClient>();
+        agentClient.SetupGet(a => a.CliFileName).Returns("claude");
+        agentClient.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AgentInvocationResult(false, string.Empty, "Please run /login to authenticate", TimeSpan.Zero, IsAuthenticationFailure: true));
+
+        Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
+        agentClientFactory.Setup(f => f.GetClient(AgentType.Claude)).Returns(agentClient.Object);
+
+        PrSyncOrchestrator orchestrator = BuildOrchestrator(pullRequestSource, agentClientFactory, briefingRepository);
+
+        AssessmentGenerationResult result = await orchestrator.GenerateAssessmentAsync(repository, 1, DefaultSettings(), CancellationToken.None);
+
+        Assert.Null(result.Briefing);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("claude", result.ErrorMessage);
+        Assert.DoesNotContain("Please run /login to authenticate", result.ErrorMessage);
         briefingRepository.Verify(r => r.SaveAsync(It.IsAny<Briefing>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

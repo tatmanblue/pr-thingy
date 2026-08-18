@@ -174,16 +174,17 @@ public partial class BriefingCardViewModel : ViewModelBase
             }
 
             AppSettings settings = await settingsStore.LoadAsync(CancellationToken.None);
-            Briefing? updated = await orchestrator.GenerateAssessmentAsync(
+            AssessmentGenerationResult generationResult = await orchestrator.GenerateAssessmentAsync(
                 repository, Briefing.PullRequestNumber, settings, CancellationToken.None);
 
-            if (updated is null)
+            if (generationResult.Briefing is null)
             {
-                AssessmentErrorMessage = "Failed to generate assessment. Check the Sync Log tab for details.";
+                AssessmentErrorMessage = generationResult.ErrorMessage
+                    ?? "Failed to generate assessment. Check the Sync Log tab for details.";
                 return;
             }
 
-            UpdateBriefing(updated);
+            UpdateBriefing(generationResult.Briefing);
         }
         finally
         {
