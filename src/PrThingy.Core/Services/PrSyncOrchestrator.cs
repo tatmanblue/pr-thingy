@@ -84,18 +84,19 @@ public sealed class PrSyncOrchestrator(
         return newOrUpdatedCount;
     }
 
-    public async Task<Briefing?> GenerateAssessmentAsync(
+    public async Task<AssessmentGenerationResult> GenerateAssessmentAsync(
         WatchedRepository repository, int pullRequestNumber, AppSettings settings, CancellationToken cancellationToken)
     {
         Briefing? existing = await briefingRepository.GetAsync(repository.StorageKey, pullRequestNumber, cancellationToken);
         if (existing is null)
         {
+            const string errorMessage = "No tracked PR record found — sync first.";
             logger.LogWarning(
                 "No tracked PR record found for {Repository} PR #{PullRequestNumber}; cannot generate assessment",
                 repository.DisplayName, pullRequestNumber);
             syncLog.Log(SyncLogLevel.Warning,
                 $"{repository.DisplayName} #{pullRequestNumber}: no tracked PR record found — sync first");
-            return null;
+            return new AssessmentGenerationResult(null, errorMessage);
         }
 
         try
@@ -126,9 +127,19 @@ public sealed class PrSyncOrchestrator(
                 logger.LogWarning(
                     "Agent invocation failed for {Repository} PR #{PullRequestNumber}: {Error}",
                     repository.DisplayName, pullRequestNumber, result.ErrorOutput);
+
+                if (result.IsAuthenticationFailure)
+                {
+                    string errorMessage =
+                        $"Not signed in to the '{client.CliFileName}' CLI — your session may have expired. Sign in again in a terminal, then try again.";
+                    syncLog.Log(SyncLogLevel.Warning,
+                        $"{repository.DisplayName} #{pullRequestNumber}: not signed in to the '{client.CliFileName}' CLI — sign in again");
+                    return new AssessmentGenerationResult(null, errorMessage);
+                }
+
                 syncLog.Log(SyncLogLevel.Warning,
                     $"{repository.DisplayName} #{pullRequestNumber}: agent invocation failed — {result.ErrorOutput}");
-                return null;
+                return new AssessmentGenerationResult(null, $"Agent invocation failed — {result.ErrorOutput}");
             }
 
             ParsedBriefingContent parsed = AgentResponseParser.Parse(result.RawOutput);
@@ -144,7 +155,7 @@ public sealed class PrSyncOrchestrator(
 
             await briefingRepository.SaveAsync(updated, cancellationToken);
             syncLog.Log(SyncLogLevel.Info, $"{repository.DisplayName} #{pullRequestNumber}: assessment saved");
-            return updated;
+            return new AssessmentGenerationResult(updated, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -152,7 +163,7 @@ public sealed class PrSyncOrchestrator(
                 "Failed to generate assessment for {Repository} PR #{PullRequestNumber}",
                 repository.DisplayName, pullRequestNumber);
             syncLog.Log(SyncLogLevel.Error, $"{repository.DisplayName} #{pullRequestNumber}: assessment generation failed — {ex.Message}");
-            return null;
+            return new AssessmentGenerationResult(null, $"Assessment generation failed — {ex.Message}");
         }
     }
 

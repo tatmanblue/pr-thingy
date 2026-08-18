@@ -22,4 +22,5 @@ public sealed record AgentInvocationResult(
     bool Succeeded,
     string RawOutput,
     string? ErrorOutput,
-    TimeSpan Duration);
+    TimeSpan Duration,
+    bool IsAuthenticationFailure = false);
