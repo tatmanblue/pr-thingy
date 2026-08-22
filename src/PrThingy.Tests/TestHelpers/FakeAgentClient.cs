@@ -14,7 +14,7 @@ public sealed class FakeAgentClient(AgentType agentType, Func<string, AgentInvoc
     public AgentInvocationOptions? LastOptions { get; private set; }
 
     public Task<AgentInvocationResult> GenerateBriefingAsync(
-        string prompt, AgentInvocationOptions options, CancellationToken cancellationToken)
+        string prompt, AgentInvocationOptions options, string workingDirectory, CancellationToken cancellationToken)
     {
         CallCount++;
         LastOptions = options;

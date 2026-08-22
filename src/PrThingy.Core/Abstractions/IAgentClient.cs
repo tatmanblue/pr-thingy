@@ -11,6 +11,7 @@ public interface IAgentClient
     Task<AgentInvocationResult> GenerateBriefingAsync(
         string prompt,
         AgentInvocationOptions options,
+        string workingDirectory,
         CancellationToken cancellationToken);
 }
 

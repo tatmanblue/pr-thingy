@@ -19,6 +19,7 @@ public sealed class LoginShellPathResolver(IProcessRunner processRunner)
                 new ProcessRunRequest(
                     shellPath,
                     ["-lic", ShellPathOutputParser.BuildProbeCommand()],
+                    WorkingDirectory: Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     Timeout: SHELL_INVOCATION_TIMEOUT),
                 cancellationToken);
 

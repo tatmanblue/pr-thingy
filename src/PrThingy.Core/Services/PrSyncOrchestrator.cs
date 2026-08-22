@@ -120,7 +120,7 @@ public sealed class PrSyncOrchestrator(
             string prompt = promptBuilder.Build(repository, pullRequest, diff, settings.MaxDiffLengthChars);
             IAgentClient client = agentClientFactory.GetClient(settings.SelectedAgent);
             AgentInvocationOptions options = new AgentInvocationOptions(settings.AgentModel, settings.AgentEffort);
-            AgentInvocationResult result = await client.GenerateBriefingAsync(prompt, options, cancellationToken);
+            AgentInvocationResult result = await client.GenerateBriefingAsync(prompt, options, repository.LocalPath, cancellationToken);
 
             if (!result.Succeeded)
             {

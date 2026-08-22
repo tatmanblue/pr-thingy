@@ -30,7 +30,7 @@ public class CliAgentClientBaseTests
         ClaudeCliAgentClient client = new ClaudeCliAgentClient(processRunner.Object);
         string largePrompt = new string('x', 100_000);
 
-        await client.GenerateBriefingAsync(largePrompt, new AgentInvocationOptions(null, AgentEffortLevel.Default), CancellationToken.None);
+        await client.GenerateBriefingAsync(largePrompt, new AgentInvocationOptions(null, AgentEffortLevel.Default), "/repo", CancellationToken.None);
 
         ProcessRunRequest? request = capturedRequest();
         Assert.NotNull(request);
@@ -45,7 +45,7 @@ public class CliAgentClientBaseTests
         Mock<IProcessRunner> processRunner = ProcessRunnerReturning(out Func<ProcessRunRequest?> capturedRequest);
         ClaudeCliAgentClient client = new ClaudeCliAgentClient(processRunner.Object);
 
-        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions("haiku", AgentEffortLevel.Low), CancellationToken.None);
+        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions("haiku", AgentEffortLevel.Low), "/repo", CancellationToken.None);
 
         IReadOnlyList<string> arguments = capturedRequest()!.Arguments;
         Assert.Equal(["-p", "--model", "haiku", "--effort", "low"], arguments);
@@ -57,7 +57,7 @@ public class CliAgentClientBaseTests
         Mock<IProcessRunner> processRunner = ProcessRunnerReturning(out Func<ProcessRunRequest?> capturedRequest);
         ClaudeCliAgentClient client = new ClaudeCliAgentClient(processRunner.Object);
 
-        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions(null, AgentEffortLevel.Default), CancellationToken.None);
+        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions(null, AgentEffortLevel.Default), "/repo", CancellationToken.None);
 
         IReadOnlyList<string> arguments = capturedRequest()!.Arguments;
         Assert.Equal(["-p"], arguments);
@@ -69,7 +69,7 @@ public class CliAgentClientBaseTests
         Mock<IProcessRunner> processRunner = ProcessRunnerReturning(out Func<ProcessRunRequest?> capturedRequest);
         GeminiCliAgentClient client = new GeminiCliAgentClient(processRunner.Object);
 
-        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions("gemini-2.5-flash", AgentEffortLevel.Max), CancellationToken.None);
+        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions("gemini-2.5-flash", AgentEffortLevel.Max), "/repo", CancellationToken.None);
 
         IReadOnlyList<string> arguments = capturedRequest()!.Arguments;
         Assert.Equal(["-p", "--model", "gemini-2.5-flash"], arguments);
@@ -81,7 +81,7 @@ public class CliAgentClientBaseTests
         Mock<IProcessRunner> processRunner = ProcessRunnerReturning(out Func<ProcessRunRequest?> capturedRequest);
         GeminiCliAgentClient client = new GeminiCliAgentClient(processRunner.Object);
 
-        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions(null, AgentEffortLevel.High), CancellationToken.None);
+        await client.GenerateBriefingAsync("prompt", new AgentInvocationOptions(null, AgentEffortLevel.High), "/repo", CancellationToken.None);
 
         IReadOnlyList<string> arguments = capturedRequest()!.Arguments;
         Assert.Equal(["-p"], arguments);

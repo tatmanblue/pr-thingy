@@ -75,7 +75,7 @@ public class PrSyncOrchestratorTests
     private static Mock<IAgentClient> SucceedingAgentClient(string rawOutput = """{"why": "ok", "highImpactFiles": [], "topRisks": []}""")
     {
         Mock<IAgentClient> agent = new Mock<IAgentClient>();
-        agent.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<CancellationToken>()))
+        agent.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AgentInvocationResult(true, rawOutput, null, TimeSpan.Zero));
         return agent;
     }
@@ -418,8 +418,8 @@ public class PrSyncOrchestratorTests
         AgentInvocationOptions? capturedOptions = null;
         Mock<IAgentClient> agentClient = new Mock<IAgentClient>();
         agentClient
-            .Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<CancellationToken>()))
-            .Callback<string, AgentInvocationOptions, CancellationToken>((_, options, _) => capturedOptions = options)
+            .Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, AgentInvocationOptions, string, CancellationToken>((_, options, _, _) => capturedOptions = options)
             .ReturnsAsync(new AgentInvocationResult(true, """{"why": "ok", "highImpactFiles": [], "topRisks": []}""", null, TimeSpan.Zero));
 
         Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
@@ -457,8 +457,8 @@ public class PrSyncOrchestratorTests
         string? capturedPrompt = null;
         Mock<IAgentClient> agentClient = new Mock<IAgentClient>();
         agentClient
-            .Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<CancellationToken>()))
-            .Callback<string, AgentInvocationOptions, CancellationToken>((prompt, _, _) => capturedPrompt = prompt)
+            .Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, AgentInvocationOptions, string, CancellationToken>((prompt, _, _, _) => capturedPrompt = prompt)
             .ReturnsAsync(new AgentInvocationResult(true, """{"why": "ok", "highImpactFiles": [], "topRisks": []}""", null, TimeSpan.Zero));
 
         Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
@@ -510,7 +510,7 @@ public class PrSyncOrchestratorTests
             .ReturnsAsync(existing);
 
         Mock<IAgentClient> agentClient = new Mock<IAgentClient>();
-        agentClient.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<CancellationToken>()))
+        agentClient.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AgentInvocationResult(false, string.Empty, "CLI not found", TimeSpan.Zero));
 
         Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
@@ -541,7 +541,7 @@ public class PrSyncOrchestratorTests
 
         Mock<IAgentClient> agentClient = new Mock<IAgentClient>();
         agentClient.SetupGet(a => a.CliFileName).Returns("claude");
-        agentClient.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<CancellationToken>()))
+        agentClient.Setup(a => a.GenerateBriefingAsync(It.IsAny<string>(), It.IsAny<AgentInvocationOptions>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AgentInvocationResult(false, string.Empty, "Please run /login to authenticate", TimeSpan.Zero, IsAuthenticationFailure: true));
 
         Mock<IAgentClientFactory> agentClientFactory = new Mock<IAgentClientFactory>();
